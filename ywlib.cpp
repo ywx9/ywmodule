@@ -1,13 +1,22 @@
 // for test
 
-#ifndef ywlib_module
+#ifndef YWLIB
 #include "ywlib.hpp"
 #else
 import ywlib;
 #endif
+using namespace yw;
 
 int main() {
-  yw::hello_world();
-  std::print("Hello, World from {}!\n", __FILE__);
-  // std::operator""sv("Hello, World from {}!", 12);
+  using t = Sequence<0, 1, 2, 3, 4, 5>;
+  std::cout << t::count << std::endl;
+  // std::cout << t::at<2>::value << std::endl;
+  // std::wcout.imbue(std::locale("Japanese"));
+  // cat1 s2[2]{};
+  // // 0x00 ~ 0x7f
+  // for (cat1 c = 0; c < 0x80; ++c) {
+  //   s2[0] = c;
+  //   auto w = win::from_shiftjis(s2);
+  //   std::wcout << std::format(L"0x00{:02x} -> 0x{:04x} ({})\n", nat1(c), nat2(w[0]), w);
+  // }
 }

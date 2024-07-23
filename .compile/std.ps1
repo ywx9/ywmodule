@@ -7,5 +7,5 @@ $i2 = "C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\shared"
 $i3 = "C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt"
 $i4 = "C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um"
 $i5 = "C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\winrt"
-$cmd = "&`"$cl`" /std:c++latest /EHsc /nologo /W4 /c `"$ix`" /I`"$i0`" /I`"$i1`" /I`"$i2`" /I`"$i3`" /I`"$i4`" /I`"$i5`" /Fo`".module\std.obj`" /ifcOutput`".module\std.ifc`""
+$cmd = "&`"$cl`" /std:c++latest /EHsc /nologo /W4 /utf-8 /c `"$ix`" /I`"$i0`" /I`"$i1`" /I`"$i2`" /I`"$i3`" /I`"$i4`" /I`"$i5`" /Fo`".module\std.obj`" /ifcOutput`".module\std.ifc`""
 Invoke-Expression $cmd
