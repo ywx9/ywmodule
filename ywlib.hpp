@@ -130,6 +130,7 @@ import std;
 #include ".include/none.hpp"
 #include ".include/projector.hpp"
 #include ".include/sequence.hpp"
+#include ".include/shiftjis.hpp"
 #include ".include/typepack.hpp"
 #include ".include/value.hpp"
 #include ".include/windows.hpp"

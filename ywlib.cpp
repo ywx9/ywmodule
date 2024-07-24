@@ -8,18 +8,15 @@ import ywlib;
 using namespace yw;
 
 int main() {
-  // using t = Typepack<int, double, char, float, short>;
-  // std::cout << t::count << std::endl;
-  using t = Sequence<0, 1, 2, 3, 4, 5>;
-  // using t = Sequence<>;
-  std::cout << t::count << std::endl;
-  std::cout << t::at<2> << std::endl;
-  // std::wcout.imbue(std::locale("Japanese"));
-  // cat1 s2[2]{};
-  // // 0x00 ~ 0x7f
-  // for (cat1 c = 0; c < 0x80; ++c) {
-  //   s2[0] = c;
-  //   auto w = win::from_shiftjis(s2);
-  //   std::wcout << std::format(L"0x00{:02x} -> 0x{:04x} ({})\n", nat1(c), nat2(w[0]), w);
-  // }
+  std::wcout.imbue(std::locale("Japanese"));
+  std::ofstream ofs("shiftjis.txt");
+  for (cat2 w{}; w < 0x1000; ++w) {
+    const auto sj = win::to_shiftjis(str2{w});
+    nat2 code = sj[1] << 8 | sj[0];
+    ofs << std::format("{:04x}, ", code);
+    if ((w & 15) == 15) ofs << '\n';
+    if ((w & 255) == 255) ofs << '\n';
+  }
+  ofs.flush();
+  ofs.close();
 }

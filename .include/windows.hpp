@@ -13,4 +13,10 @@ inline str2 from_shiftjis(const stv1 sj) {
   return s;
 }
 
+inline str1 to_shiftjis(const stv2 w) {
+  str1 s(::WideCharToMultiByte(932, 0, w.data(), int(w.size()), nullptr, 0, nullptr, nullptr), '0');
+  ::WideCharToMultiByte(932, 0, w.data(), int(w.size()), s.data(), int(s.size()), nullptr, nullptr);
+  return s;
 }
+
+} // namespace yw::win

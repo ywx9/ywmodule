@@ -156,6 +156,6 @@ struct tuple_size<yw::Sequence<Vs...>>
 
 template<size_t I, auto... Vs>
 struct tuple_element<I, yw::Sequence<Vs...>>
-  : type_identity<yw::Sequence<Vs...>::template type_at<I>> {};
+  : type_identity<typename yw::Sequence<Vs...>::template type_at<I>> {};
 
 } // namespace std
