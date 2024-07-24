@@ -20,16 +20,36 @@ private:
   template<typename T, typename S> struct t_extract {};
   template<typename... Us, nat... Is> struct t_extract<Typepack<Us...>, Sequence<Is...>> : _::_type<Typepack<select_type<Is, Us...>...>> {};
 public:
-  static constexpr nat count = sizeof...(Ts);
+
+  /// number of types in the typepack
+  /// \note the word "count" cannot be used for coding `Typepack` because of a bug in MSVC (2024.07.24)
+  static constexpr nat8 count = sizeof...(Ts);
+
   using common = common_type<Ts...>;
-  template<nat I> requires(I < count) using at = select_type<I, Ts...>;
-  template<tuple Tp> using append = typename t_append<Typepack, to_typepack<Tp>>::type;
-  template<indices_for<Typepack> Sq> using extract = typename t_extract<Typepack, to_sequence<Sq, nat>>::type;
-  template<nat N> requires(N <= count) using fore = extract<make_sequence<0, N>>;
-  template<nat N> requires(N <= count) using back = extract<make_sequence<count, count - N>>;
-  template<nat I, tuple T> requires(I < count) using insert = typename fore<I>::template append<T>::template append<back<count - I>>;
-  template<template<typename...> typename Tm> using expand = Tm<Ts...>;
-  template<nat I> requires(I < count) constexpr at<I> get() const noexcept;
+
+  template<nat I> requires(I < (sizeof...(Ts)))
+  using at = select_type<I, Ts...>;
+
+  template<tuple Tp>
+  using append = typename t_append<Typepack, to_typepack<Tp>>::type;
+
+  template<indices_for<Typepack> Sq>
+  using extract = typename t_extract<Typepack, to_sequence<Sq, nat>>::type;
+
+  template<nat N> requires(N <= (sizeof...(Ts)))
+  using fore = extract<make_sequence<0, N>>;
+
+  template<nat N> requires(N <= (sizeof...(Ts)))
+  using back = extract<make_sequence<(sizeof...(Ts)), (sizeof...(Ts)) - N>>;
+
+  template<nat I, tuple T> requires(I < (sizeof...(Ts)))
+  using insert = typename fore<I>::template append<T>::template append<back<(sizeof...(Ts)) - I>>;
+
+  template<template<typename...> typename Tm>
+  using expand = Tm<Ts...>;
+
+  template<nat I> requires(I < (sizeof...(Ts)))
+  constexpr at<I> get() const noexcept;
 };
 
 } // namespace yw

@@ -46,16 +46,45 @@ private:
   template<nat... Is> struct _extract<Sequence<Is...>> : _::_type<Sequence<select_value<Is, Vs...>...>> {};
   template<> struct _extract<None> : _::_type<None> {};
 public:
+
+  /// number of values in the sequence
   static constexpr nat count = sizeof...(Vs);
-  template<nat I> requires(lt(I, count)) static constexpr auto at = select_value<I, Vs...>;
-  template<nat I> requires(lt(I, count)) using type_at = select_type<I, decltype(Vs)...>;
-  template<sequence_of Sq> using append = typename _append<to_sequence<Sq>>::type;
-  template<indices_for<Sequence> Ind> using extract = typename _extract<to_sequence<Ind, nat>>::type;
-  template<nat N> requires(N <= count) using fore = extract<make_sequence<0, N>>;
-  template<nat N> requires(N <= count) using back = extract<make_sequence<count, count - N>>;
-  template<nat I, sequence_of Sq> requires(I < count) using insert = typename fore<I>::template append<Sq>::template append<back<count - I>>;
-  template<template<auto...> typename Tm> using expand = Tm<Vs...>;
-  template<nat I> requires(I < count) constexpr const auto&& get() const noexcept { return mv(at<I>); }
+
+  /// value at index `I`
+  template<nat I> requires(lt(I, sizeof...(Vs)))
+  static constexpr auto at = select_value<I, Vs...>;
+
+  /// type at index `I`
+  template<nat I> requires(lt(I, sizeof...(Vs)))
+  using type_at = select_type<I, decltype(Vs)...>;
+
+  /// appends values of another sequence
+  template<sequence_of Sq>
+  using append = typename _append<to_sequence<Sq>>::type;
+
+  /// extracts a subsequence
+  template<indices_for<Sequence> Ind>
+  using extract = typename _extract<to_sequence<Ind, nat>>::type;
+
+  /// extracts the first `N` values
+  template<nat N> requires(N <= sizeof...(Vs))
+  using fore = extract<make_sequence<0, N>>;
+
+  /// extracts the last `N` values
+  template<nat N> requires(N <= sizeof...(Vs))
+  using back = extract<make_sequence<sizeof...(Vs), sizeof...(Vs) - N>>;
+
+  /// inserts another sequence at index `I`
+  template<nat I, sequence_of Sq> requires(I < sizeof...(Vs))
+  using insert = typename fore<I>::template append<Sq>::template append<back<sizeof...(Vs) - I>>;
+
+  /// expands the sequence into a template
+  template<template<auto...> typename Tm>
+  using expand = Tm<Vs...>;
+
+  /// for `yw::get`
+  template<nat I> requires(I < sizeof...(Vs))
+  constexpr const auto&& get() const noexcept { return mv(at<I>); }
 };
 
 namespace _ {
@@ -78,34 +107,55 @@ constexpr decltype(auto) _apply(F&& f, Ts&&... ts)
   ywlib_wrapper(_apply_a<inspects<tuple<Ts>...>>(fwd<F>(f), fwd<Ts>(ts)...));
 }
 
-template<typename F, typename... Ts> concept applyable =
-  requires(F&& f, Ts&&... ts) { { _::_apply(fwd<F>(f), fwd<Ts>(ts)...) }; };
+/// checks if `apply(F, Ts...)` is well-formed
+template<typename F, typename... Ts>
+concept applyable = requires(F&& f, Ts&&... ts) {
+  { _::_apply(fwd<F>(f), fwd<Ts>(ts)...) };
+};
 
-template<typename F, typename... Ts> concept nt_applyable = applyable<F, Ts...> &&
-  requires(F&& f, Ts&&... ts) { { _::_apply(fwd<F>(f), fwd<Ts>(ts)...) } noexcept; };
+/// checks if `apply(F, Ts...)` is well-formed and noexcept
+template<typename F, typename... Ts>
+concept nt_applyable = requires(F&& f, Ts&&... ts) {
+  applyable<F, Ts...>;
+  { _::_apply(fwd<F>(f), fwd<Ts>(ts)...) } noexcept;
+};
 
-template<typename F, typename... Ts> using apply_result =
-  decltype(_::_apply(declval<F>(), declval<Ts>()...));
+/// result type of `apply(F, Ts...)`
+template<typename F, typename... Ts>
+using apply_result = decltype(_::_apply(declval<F>(), declval<Ts>()...));
 
-inline constexpr auto apply = []<typename F, typename... Ts>(F&& Func, Ts&&... Args)
-  noexcept(nt_applyable<F, Ts...>) requires applyable<F, Ts...>
-{ return _::_apply(fwd<F>(Func), fwd<Ts>(Args)...); };
+/// applies a function to arguments with tuples expanded
+inline constexpr auto apply =
+[]<typename F, typename... Ts>(F&& Func, Ts&&... Args)
+  noexcept(nt_applyable<F, Ts...>) requires applyable<F, Ts...> {
+  return _::_apply(fwd<F>(Func), fwd<Ts>(Args)...);
+};
 
-template<typename T, typename Tp> concept buildable =
-  applyable<decltype(construct<T>), Tp>;
+/// checks if `build<T>(Tp)` is well-formed
+template<typename T, typename Tp>
+concept buildable = applyable<decltype(construct<T>), Tp>;
 
-template<typename T, typename Tp> concept nt_buildable =
-  nt_applyable<decltype(construct<T>), Tp>;
+/// checks if `build<T>(Tp)` is well-formed and noexcept
+template<typename T, typename Tp>
+concept nt_buildable = nt_applyable<decltype(construct<T>), Tp>;
 
-template<typename T> inline constexpr auto build = []<typename Tp>(Tp&& Tuple)
-  noexcept(nt_buildable<T, Tp>) requires buildable<T, Tp>
-  { return apply(construct<T>, fwd<Tp>(Tuple)); };
+/// constructs an object of type `T` from elements of `Tp`
+template<typename T> inline constexpr auto build =
+[]<typename Tp>(Tp&& Tuple)
+  noexcept(nt_buildable<T, Tp>) requires buildable<T, Tp> {
+  return apply(construct<T>, fwd<Tp>(Tuple));
+};
 
 } // namespace yw
 
 namespace std {
 
-template<auto... Vs> struct tuple_size<yw::Sequence<Vs...>> : integral_constant<size_t, yw::Sequence<Vs...>::count> {};
-template<size_t I, auto... Vs> struct tuple_element<I, yw::Sequence<Vs...>> { using type = typename yw::Sequence<Vs...>::template type_at<I>; };
+template<auto... Vs>
+struct tuple_size<yw::Sequence<Vs...>>
+  : integral_constant<size_t, yw::Sequence<Vs...>::count> {};
+
+template<size_t I, auto... Vs>
+struct tuple_element<I, yw::Sequence<Vs...>>
+  : type_identity<yw::Sequence<Vs...>::template type_at<I>> {};
 
 } // namespace std

@@ -8,9 +8,12 @@ import ywlib;
 using namespace yw;
 
 int main() {
+  // using t = Typepack<int, double, char, float, short>;
+  // std::cout << t::count << std::endl;
   using t = Sequence<0, 1, 2, 3, 4, 5>;
+  // using t = Sequence<>;
   std::cout << t::count << std::endl;
-  // std::cout << t::at<2>::value << std::endl;
+  std::cout << t::at<2> << std::endl;
   // std::wcout.imbue(std::locale("Japanese"));
   // cat1 s2[2]{};
   // // 0x00 ~ 0x7f
