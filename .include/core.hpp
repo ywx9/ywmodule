@@ -241,7 +241,7 @@ inline constexpr Le le;
 inline constexpr Gt gt;
 inline constexpr Ge ge;
 
-template<trivial T> inline constexpr auto bitcast = [](const trivial auto& Ref) noexcept requires (sizeof(T) == sizeof(Ref)) { return __builtin_bit_cast(T, Ref); };
+template<trivial T> constexpr T bitcast(const trivial auto& Ref) noexcept requires (sizeof(T) == sizeof(Ref)) { return __builtin_bit_cast(T, Ref); };
 inline constexpr auto bitcount = [](const nat Value) noexcept -> nat { return std::popcount(Value); };
 inline constexpr auto bitfloor = [](const nat Value) noexcept -> nat { return std::bit_floor(Value); };
 inline constexpr auto bitceil = [](const nat Value) noexcept -> nat { return std::bit_ceil(Value); };
