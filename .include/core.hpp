@@ -51,6 +51,16 @@ consteval fat8 operator""_f8(nat8 n) { return static_cast<fat8>(n); }
 consteval fat4 operator""_f4(ld_t n) { return static_cast<fat4>(n); }
 consteval fat8 operator""_f8(ld_t n) { return static_cast<fat8>(n); }
 
+/// Helper of `makenat`
+template<typename T> struct MakeNat { using type = None; };
+template<typename T> requires (sizeof(T) == 1) struct MakeNat<T> { using type = nat1; };
+template<typename T> requires (sizeof(T) == 2) struct MakeNat<T> { using type = nat2; };
+template<typename T> requires (sizeof(T) == 4) struct MakeNat<T> { using type = nat4; };
+template<typename T> requires (sizeof(T) == 8) struct MakeNat<T> { using type = nat8; };
+
+/// natural number type, whose size is the same as `T`
+template<typename T> using makenat = typename MakeNat<T>::type;
+
 template<typename T, typename... Ts> concept same_as = requires { requires (std::same_as<T, Ts> && ...); };
 template<typename T, typename... Ts> concept included_in = requires { requires (std::same_as<T, Ts> || ...); };
 template<typename T, typename... Ts> concept derived_from = requires { requires (std::derived_from<T, Ts> && ...); };
@@ -169,6 +179,13 @@ template<typename T> inline constexpr auto construct = []<typename... Ts>(Ts&&..
 inline constexpr auto assign = []<typename L, typename R>(L&& Lhs, R&& Rhs) noexcept(nt_assignable<L, R>) -> decltype(auto) requires assignable<L, R> { return fwd<L>(Lhs) = fwd<R>(Rhs); };
 inline constexpr auto exchange = []<typename T, typename U = T>(T& Ref, U&& Value) noexcept(nt_exchangeable<T&, U>) -> T requires exchangeable<T&, U> { auto a = mv(Ref); Ref = fwd<U>(Value); return a; };
 
+/// decays the type
+template<typename T> using decay = std::decay_t<T>;
+
+/// performs `decay-copy` operation
+inline constexpr auto decay_copy = []<typename T>(T&& Ref)
+   noexcept(nt_convertible_to<T, decay<T>>) -> decay<T> { return fwd<T>(Ref); };
+
 template<convertible_to<nat> auto I, nat N> inline constexpr bool selectable = (is_bool<decltype(I)> && N == 2) || (!is_bool<decltype(I)> && static_cast<nat>(I) < N);
 template<convertible_to<nat> auto I, typename... Ts> requires selectable<I, sizeof...(Ts)> using select_type = typename _::_select_type<decltype(I), I, Ts...>::type;
 template<convertible_to<nat> auto I, auto... Vs> requires selectable<I, sizeof...(Vs)> inline constexpr auto select_value = select_type<I, constant<Vs>...>::value;
@@ -279,11 +296,27 @@ template<typename Rg> concept sized_range = std::ranges::sized_range<Rg>;
 template<range Rg> using iterator_t = std::ranges::iterator_t<Rg>;
 template<range Rg> using borrowed_iterator_t = std::ranges::borrowed_iterator_t<Rg>;
 template<range Rg> using sentinel_t = std::ranges::sentinel_t<Rg>;
-template<typename T> requires iterator<T> || range<T> using iter_value = typename _::_iter_t<T>::v;
-template<typename T> requires iterator<T> || range<T> using iter_difference = typename _::_iter_t<T>::d;
-template<typename T> requires iterator<T> || range<T> using iter_reference = typename _::_iter_t<T>::r;
-template<typename T> requires iterator<T> || range<T> using iter_rvref = typename _::_iter_t<T>::rr;
-template<typename T> requires iterator<T> || range<T> using iter_common = common_type<iter_reference<T>, iter_value<T>>;
+
+/// value type of iterator/range
+template<typename T> requires iterator<remove_ref<T>> || range<remove_ref<T>>
+using iter_value = typename _::_iter_t<remove_ref<T>>::v;
+
+/// difference type of iterator/range
+template<typename T> requires iterator<remove_ref<T>> || range<remove_ref<T>>
+using iter_difference = typename _::_iter_t<remove_ref<T>>::d;
+
+/// reference type of iterator/range
+template<typename T> requires iterator<remove_ref<T>> || range<remove_ref<T>>
+using iter_reference = typename _::_iter_t<remove_ref<T>>::r;
+
+/// rvalue reference type of iterator/range
+template<typename T> requires iterator<remove_ref<T>> || range<remove_ref<T>>
+using iter_rvref = typename _::_iter_t<remove_ref<T>>::rr;
+
+/// common type of `iter_reference` and `iter_value`
+template<typename T> requires iterator<remove_ref<T>> || range<remove_ref<T>>
+using iter_common = common_type<iter_reference<T>, iter_value<T>>;
+
 template<typename It, typename T> concept output_iterator = std::output_iterator<It, T>;
 template<typename It> concept input_iterator = std::input_iterator<It>;
 template<typename It> concept fwd_iterator = std::forward_iterator<It>;

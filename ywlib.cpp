@@ -8,12 +8,17 @@ import ywlib;
 using namespace yw;
 
 int main() {
+  std::cout.imbue(std::locale("Japanese"));
+  std::wcout.imbue(std::locale("Japanese"));
   try {
-    std::wcout.imbue(std::locale("Japanese"));
 
-    const str2 wcs = LR"(テレビ朝日で23日午後10時半～深夜0時までの約1時間半、CMが放送できないトラブルが発生した。翌24日朝の「グッド！モーニング」でもCMが一部欠落した。
+    constexpr stv1 is = " sadfa -873252sadfsa";
+    constexpr stv1 ns = " fsageaaa  asf 1236789fasga";
+    constexpr stv1 fs = " sajfdl -333.55555";
 
-　23日夜の「報道ステーション」は約1時間20分の放送で一度もCMが流れなかった。同番組は通常「約50本のCMがある」（同局関係者）という。午後11時26分からの「世界の車窓から」の放送前に、画面に「機器の不具合によりコマーシャルが送出できない状況となっております」とのテロップとともに夜景が表示された。)";
-    std::cout << utf16_to_shiftjis(wcs) << std::endl;
+    return stov<int8>(is);
+    // std::cout << stov<nat8>(ns) << std::endl;
+    // std::cout << stov<fat8>(fs) << std::endl;
+
   } catch (const std::exception& e) { std::cerr << e.what() << std::endl; }
 }

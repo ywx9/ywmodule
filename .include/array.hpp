@@ -10,7 +10,7 @@ import std;
 
 export namespace yw {
 
-export template<typename T, nat N = npos> class Array {
+template<typename T, nat N = npos> class Array {
 public:
   T array[N] = {{}};
   static constexpr nat count = N;
@@ -38,7 +38,7 @@ public:
   template<nat I> requires(I < N) constexpr const T&& get() const&& noexcept { return mv(array[I]); }
 };
 
-export template<typename T> class Array<T, 0> {
+template<typename T> class Array<T, 0> {
 public:
   static constexpr nat count = 0;
   using value_type = T;
@@ -52,7 +52,7 @@ public:
   const T* end() const noexcept { return reinterpret_cast<const T*>(this); }
 };
 
-export template<typename T> class Array<T, npos> : public std::vector<T> {
+template<typename T> class Array<T, npos> : public std::vector<T> {
 public:
   constexpr Array() noexcept = default;
   constexpr Array(std::vector<T>&& v) : std::vector<T>(mv(v)) {}
@@ -64,16 +64,16 @@ public:
   template<range_for<T> Rg> constexpr Array(Rg&& r) : std::vector<T>(yw::begin(r), yw::end(r)) {}
 };
 
-export template<typename T, convertible_to<T>... Ts> Array(T, Ts...) -> Array<T, 1 + sizeof...(Ts)>;
-export template<typename T> Array(nat, const T&) -> Array<T, npos>;
-export template<iterator It, sentinel_for<It> Se> Array(It, Se) -> Array<iter_value<It>, npos>;
-export template<range Rg> Array(Rg&&) -> Array<iter_value<Rg>, npos>;
+template<typename T, convertible_to<T>... Ts> Array(T, Ts...) -> Array<T, 1 + sizeof...(Ts)>;
+template<typename T> Array(nat, const T&) -> Array<T, npos>;
+template<iterator It, sentinel_for<It> Se> Array(It, Se) -> Array<iter_value<It>, npos>;
+template<range Rg> Array(Rg&&) -> Array<iter_value<Rg>, npos>;
 
 } // namespace yw
 
 namespace std {
 
-export template<typename T, size_t N> requires (N != yw::npos) struct tuple_size<yw::Array<T, N>> : integral_constant<size_t, N> {};
-export template<size_t I, typename T, size_t N> requires (N != yw::npos) struct tuple_element<I, yw::Array<T, N>> { using type = T; };
+template<typename T, size_t N> requires (N != yw::npos) struct tuple_size<yw::Array<T, N>> : integral_constant<size_t, N> {};
+template<size_t I, typename T, size_t N> requires (N != yw::npos) struct tuple_element<I, yw::Array<T, N>> { using type = T; };
 
 } // namespace std
