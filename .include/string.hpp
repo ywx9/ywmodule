@@ -2706,33 +2706,37 @@ template<arithmetic T> inline constexpr auto stov = []<stringable St>(St&& s) no
 
 
 namespace _ {
-
-template<character Ct> constexpr String<Ct> _ftos(fat8 v) noexcept {
-  String<Ct> r(32, {});
-  auto p = r.data();
-  if (v < 0) *p++ = Ct('-'), v = -v;
-  if (v < 1) *p++ = Ct('0');
-  else {
-    nat8 i = nat8(v);
-    while (i) *p++ = Ct('0' + i % 10), i /= 10;
-    for (nat8 i = 0, j = p - r.data() - 1; i < j; ++i, --j) {
-      Ct t = r[i];
-      r[i] = r[j];
-      r[j] = t;
-    }
-  }
-  if (v != nat8(v)) {
-    *p++ = Ct('.');
-    v -= nat8(v);
-    for (nat8 i = 0; i < 6; ++i) {
-      v *= 10;
-      *p++ = Ct('0' + nat8(v));
-      v -= nat8(v);
-    }
-  }
-  r.resize(p - r.data());
-  return r;
+template<character Ct> constexpr String<Ct> _ntos(nat8 v) noexcept {
+  if (v == 0) return String<Ct>(1, Ct('0'));
+  Ct temp[20];
+  nat it = 20;
+  for (; v != 0; v /= 10) temp[--it] = Ct(v % 10 + '0');
+  return String<Ct>(temp + it, 20 - it);
 }
-
+template<character Ct> constexpr String<Ct> _itos(int8 v) noexcept {
+  if (v == 0) return String<Ct>(1, Ct('0'));
+  const bool neg = v < 0;
+  Ct temp[20];
+  nat it = 20;
+  for (; v != 0; v /= 10) temp[--it] = Ct(v % 10 + '0');
+  if (neg) temp[--it] = Ct('-');
+  return String<Ct>(temp + it, 20 - it);
+}
+template<character Ct> constexpr String<Ct> _ftos(fat8 v) noexcept {
+  if (v == 0) return String<Ct>(1, Ct('0'));
+  Ct temp[20];
+  nat it = 20;
+  if (v < 0) v = -v, temp[--it] = Ct('-');
+  nat i = nat(v);
+  for (; i != 0; i /= 10) temp[--it] = Ct(i % 10 + '0');
+  if (v != nat(v)) {
+    temp[--it] = Ct('.');
+    for (nat i = 0; i < 6; ++i) {
+      v *= 10;
+      temp[--it] = Ct(nat(v) % 10 + '0');
+    }
+  }
+  return String<Ct>(temp + it, 20 - it);
+}
 }
 } // namespace yw
