@@ -2,7 +2,8 @@
 
 #include "none.hpp"
 
-#define ywlib_wrapper(...) noexcept(noexcept(__VA_ARGS__)) requires requires { __VA_ARGS__; } { return __VA_ARGS__; }
+#define ywlib_wrapper(...) noexcept(noexcept(__VA_ARGS__)) \
+  requires requires { __VA_ARGS__; } { return __VA_ARGS__; }
 
 export namespace yw {
 
@@ -25,6 +26,7 @@ using fat8 = double;
 using sl_t = long;
 using ul_t = unsigned long;
 using ld_t = long double;
+using np_t = decltype(nullptr);
 using po_t = std::partial_ordering;
 using wo_t = std::weak_ordering;
 using so_t = std::strong_ordering;
@@ -147,7 +149,8 @@ template<typename T> concept is_void = same_as<remove_cv<T>, void>;
 template<typename T> concept is_bool = same_as<remove_cv<T>, bool>;
 template<typename T> concept character = included_in<remove_cv<T>, cat1, cat2, uct1, uct2, uct4>;
 template<typename T> concept integral = std::integral<remove_cv<T>>;
-template<typename T> concept arithmetic = integral<T> || std::floating_point<T>;
+template<typename T> concept floating_point = std::floating_point<remove_cv<T>>;
+template<typename T> concept arithmetic = integral<T> || floating_point<T>;
 
 template<typename T> using add_cv = typename _::_add_cv<T>::cv;
 template<typename T> using add_const = typename _::_add_cv<T>::c;

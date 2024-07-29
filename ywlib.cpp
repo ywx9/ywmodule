@@ -8,17 +8,21 @@ import ywlib;
 using namespace yw;
 
 int main() {
-  std::cout.imbue(std::locale("Japanese"));
-  std::wcout.imbue(std::locale("Japanese"));
+  // std::cout.imbue(std::locale("Japanese"));
+  std::wcout.imbue(std::locale(""));
   try {
 
-    constexpr stv1 is = " sadfa -873252sadfsa";
-    constexpr stv1 ns = " fsageaaa  asf 1236789fasga";
-    constexpr stv1 fs = " sajfdl -333.55555";
+    stv1 is = " sadfa -873252sadfsa";
+    stv1 ns = " fsageaaa  asf 1236789fasga";
+    stv1 fs = " sajfdl -333.55555";
 
-    return stov<int8>(is);
-    // std::cout << stov<nat8>(ns) << std::endl;
-    // std::cout << stov<fat8>(fs) << std::endl;
+    std::wcout << L"あいうえお\n";
+    // std::cout << _::_stoi(is) << std::endl;
+    // std::cout << _::_ston(ns) << std::endl;
+    // std::cout << _::_stof(fs) << std::endl;
+    std::cout << stov<fat4>(is) << " --- " << is << std::endl;
+    std::cout << stov<nat8>(ns) << " --- " << ns << std::endl;
+    std::cout << stov<fat8>(fs) << " --- " << fs << std::endl;
 
   } catch (const std::exception& e) { std::cerr << e.what() << std::endl; }
 }

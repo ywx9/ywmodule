@@ -2618,94 +2618,121 @@ constexpr String<Out> cvt(stringable auto&& s) noexcept {
 }
 
 
-/// helper of `is_digit`
-struct IsDigit {
-  /// checks if the character is a digit
-  template<character Ct>
-  constexpr bool operator()(const Ct c) const
-    noexcept { return bitcast<makenat<Ct>>(Ct(c ^ 0x30)) < 10; }
-};
-
 /// checks if the character is a digit
-inline constexpr IsDigit is_digit;
+inline constexpr auto is_digit = []<character Ct>(const Ct c)
+  noexcept { return (bitcast<makenat<Ct>>(c) ^ 0x30) < 10; };
 
 
-/// helper of `stov`
-template<arithmetic T> struct Stov {
-  /// converts a string to a value
-  /// \param s string to convert
-  /// \return converted value
-  constexpr T operator()(stringable auto&& s) const noexcept {
-    using Ct = iter_value<remove_ref<decltype(s)>>;
-    StringView<Ct> t(s);
-    if constexpr (std::floating_point<T>) {
-      fat8 v{};
-      bool neg = false, dot = false;
-      while (!t.empty()) {
-        if (t.front() == Ct('-')) {
-          t.remove_prefix(1);
-          if (t.empty()) return T();
-          else if (is_digit(t.front())) { neg = true; v = t.front() - '0'; break;}
-          else if (t.front() == Ct('.')) { neg = true; dot = true; break; }
-        } else if (is_digit(t.front())) { v = t.front() - '0'; break; }
-        else if (t.front() == Ct('.')) { dot = true; break; }
-        t.remove_prefix(1);
-      }
-      if (t.empty()) return T(neg ? -v : v);
-      else if (!dot) {
-        while (!t.empty()) {
-          if (is_digit(t.front())) v = v * 10 + t.front() - '0';
-          else if (t.front() == Ct('.')) { dot = true; break; }
-          else return T(neg ? -v : v);
-          t.remove_prefix(1);
-        }
-        if (t.empty()) return T(neg ? -v : v);
-      }
-      fat8 p = 0.1;
-      while (!t.empty()) {
-        if (is_digit(t.front())) { v += (t.front() - '0') * p; p *= 0.1; }
-        else return T(neg ? -v : v);
-        t.remove_prefix(1);
-      }
-      return T(neg ? -v : v);
-    } else if constexpr (std::signed_integral<T>) {
-      int8 v{};
-      bool neg = false;
-      while (!t.empty()) {
-        if (t.front() == Ct('-')) {
-          t.remove_prefix(1);
-          if (t.empty()) return T{};
-          else if (is_digit(t.front())) { neg = true; v = t.front() - '0'; break; }
-        } else if (is_digit(t.front())) { v = t.front() - '0'; break; }
-        t.remove_prefix(1);
-      }
-      if (t.empty()) return T(neg ? -v : v);
-      t.remove_prefix(1);
-      while (!t.empty()) {
-        if (is_digit(t.front())) v = v * 10 + t.front() - '0';
-        else return T(neg ? -v : v);
-        t.remove_prefix(1);
-      }
-      return T(neg ? -v : v);
-    } else {
-      nat8 v{};
-      while (!t.empty()) {
-        if (is_digit(t.front())) { v = t.front() - '0'; break; }
-        t.remove_prefix(1);
-      }
-      if (t.empty()) return T(v);
-      t.remove_prefix(1);
-      while (!t.empty()) {
-        if (is_digit(t.front())) v = v * 10 + t.front() - '0';
-        else return T(v);
-        t.remove_prefix(1);
-      }
-      return T(v);
-    }
+namespace _ {
+
+template<typename Ct> constexpr fat8 _stof(StringView<Ct>& s) noexcept {
+  fat8 v{};
+  bool neg = false, dot = false;
+  while (1) {
+    if (s.empty()) return {};
+    else if (is_digit(s.front())) { neg = true; v = s.front() - '0'; break;}
+    else if (s.front() == Ct('-')) { neg = true; break; }
+    else if (s.front() == Ct('.')) { dot = true; break; }
+    else s.remove_prefix(1);
+  }
+  s.remove_prefix(1);
+  while (!dot) {
+    if (s.empty()) return neg ? -v : v;
+    else if (is_digit(s.front())) v = v * 10 + s.front() - '0', s.remove_prefix(1);
+    else if (s.front() == Ct('.')) { dot = true; break; }
+    else return neg ? -v : v;
+  }
+  s.remove_prefix(1);
+  fat8 p = 0.1;
+  while (1) {
+    if (s.empty()) return neg ? -v : v;
+    else if (is_digit(s.front())) { v += (s.front() - '0') * p; p *= 0.1, s.remove_prefix(1); }
+    else return neg ? -v : v;
+  }
+}
+
+template<typename Ct> constexpr int8 _stoi(StringView<Ct>& s) noexcept {
+  int8 v{};
+  bool neg = false;
+  while (1) {
+    if (s.empty()) return {};
+    else if (is_digit(s.front())) { neg = true; v = s.front() - '0'; break; }
+    else if (s.front() == Ct('-')) { neg = true; break; }
+    else s.remove_prefix(1);
+  }
+  s.remove_prefix(1);
+  while (1) {
+    if (s.empty()) return neg ? -v : v;
+    else if (is_digit(s.front())) v = v * 10 + s.front() - '0', s.remove_prefix(1);
+    else return neg ? -v : v;
+  }
+}
+
+template<typename Ct> constexpr nat8 _ston(StringView<Ct>& s) noexcept {
+  nat8 v{};
+  while (1) {
+    if (s.empty()) return v;
+    else if (is_digit(s.front())) { v = s.front() - '0'; break; }
+    else s.remove_prefix(1);
+  }
+  s.remove_prefix(1);
+  while (1) {
+    if (s.empty()) return v;
+    else if (is_digit(s.front())) v = v * 10 + s.front() - '0', s.remove_prefix(1);
+    else return v;
+  }
+}
+
+}
+
+
+/// converts a string to a value
+/// \tparam T type of the value to convert to
+/// \param s string to convert
+/// \return converted value
+/// \note if `s` is the lvalue reference to a `StringView`, it represents the rest part not used to convert
+template<arithmetic T> inline constexpr auto stov = []<stringable St>(St&& s) noexcept -> T {
+  if constexpr (same_as<St, StringView<iter_value<decltype(s)>>&>) {
+    if constexpr (floating_point<T>) return T(_::_stof(s));
+    else if constexpr (std::signed_integral<T>) return T(_::_stoi(s));
+    else if constexpr (std::unsigned_integral<T>) return T(_::_ston(s));
+  } else {
+    StringView<iter_value<remove_ref<decltype(s)>>> t(s);
+    if constexpr (floating_point<T>) return T(_::_stof(t));
+    else if constexpr (std::signed_integral<T>) return T(_::_stoi(t));
+    else if constexpr (std::unsigned_integral<T>) return T(_::_ston(t));
   }
 };
 
-/// converts a string to a value
-template<arithmetic T> inline constexpr Stov<T> stov;
+
+namespace _ {
+
+template<character Ct> constexpr String<Ct> _ftos(fat8 v) noexcept {
+  String<Ct> r(32, {});
+  auto p = r.data();
+  if (v < 0) *p++ = Ct('-'), v = -v;
+  if (v < 1) *p++ = Ct('0');
+  else {
+    nat8 i = nat8(v);
+    while (i) *p++ = Ct('0' + i % 10), i /= 10;
+    for (nat8 i = 0, j = p - r.data() - 1; i < j; ++i, --j) {
+      Ct t = r[i];
+      r[i] = r[j];
+      r[j] = t;
+    }
+  }
+  if (v != nat8(v)) {
+    *p++ = Ct('.');
+    v -= nat8(v);
+    for (nat8 i = 0; i < 6; ++i) {
+      v *= 10;
+      *p++ = Ct('0' + nat8(v));
+      v -= nat8(v);
+    }
+  }
+  r.resize(p - r.data());
+  return r;
+}
 
 }
+} // namespace yw

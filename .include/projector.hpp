@@ -34,11 +34,11 @@ template<typename T> Projector(T&&) -> Projector<T>;
 
 namespace std {
 
-template<typename T, typename Pj, yw::sequence_of<nat> Sq>
+template<typename T, typename Pj, yw::sequence_of<size_t> Sq>
 struct tuple_size<yw::Projector<T, Pj, Sq>>
   : integral_constant<size_t, yw::Projector<T, Pj, Sq>::count> {};
 
-template<size_t I, typename T, typename Pj, yw::sequence_of<nat> Sq>
+template<size_t I, typename T, typename Pj, yw::sequence_of<size_t> Sq>
 struct tuple_element<I, yw::Projector<T, Pj, Sq>> {
   using type = decltype(declval<yw::Projector<T, Pj, Sq>>().template get<I>());
 };
