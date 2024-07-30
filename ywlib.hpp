@@ -127,6 +127,7 @@ import std;
 #include ".include/core.hpp"
 #include ".include/functions.hpp"
 #include ".include/list.hpp"
+#include ".include/logger.hpp"
 #include ".include/none.hpp"
 #include ".include/projector.hpp"
 #include ".include/sequence.hpp"

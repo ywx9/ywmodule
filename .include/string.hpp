@@ -10,7 +10,7 @@
 import std;
 #endif
 
-#include "core.hpp"
+#include "value.hpp"
 
 export namespace yw {
 
@@ -2625,6 +2625,38 @@ inline constexpr auto is_digit = []<character Ct>(const Ct c)
 
 namespace _ {
 
+template<typename Ct> constexpr nat8 _ston(StringView<Ct>& s) noexcept {
+  nat8 v{};
+  while (1) {
+    if (s.empty()) return v;
+    else if (is_digit(s.front())) { v = s.front() - '0'; break; }
+    else s.remove_prefix(1);
+  }
+  s.remove_prefix(1);
+  while (1) {
+    if (s.empty()) return v;
+    else if (is_digit(s.front())) v = v * 10 + s.front() - '0', s.remove_prefix(1);
+    else return v;
+  }
+}
+
+template<typename Ct> constexpr int8 _stoi(StringView<Ct>& s) noexcept {
+  int8 v{};
+  bool neg = false;
+  while (1) {
+    if (s.empty()) return {};
+    else if (is_digit(s.front())) { neg = true; v = s.front() - '0'; break; }
+    else if (s.front() == Ct('-')) { neg = true; break; }
+    else s.remove_prefix(1);
+  }
+  s.remove_prefix(1);
+  while (1) {
+    if (s.empty()) return neg ? -v : v;
+    else if (is_digit(s.front())) v = v * 10 + s.front() - '0', s.remove_prefix(1);
+    else return neg ? -v : v;
+  }
+}
+
 template<typename Ct> constexpr fat8 _stof(StringView<Ct>& s) noexcept {
   fat8 v{};
   bool neg = false, dot = false;
@@ -2647,40 +2679,23 @@ template<typename Ct> constexpr fat8 _stof(StringView<Ct>& s) noexcept {
   while (1) {
     if (s.empty()) return neg ? -v : v;
     else if (is_digit(s.front())) { v += (s.front() - '0') * p; p *= 0.1, s.remove_prefix(1); }
+    else if ((s.front() == Ct('e') || s.front() == Ct('E'))) break;
     else return neg ? -v : v;
   }
-}
-
-template<typename Ct> constexpr int8 _stoi(StringView<Ct>& s) noexcept {
-  int8 v{};
-  bool neg = false;
-  while (1) {
-    if (s.empty()) return {};
-    else if (is_digit(s.front())) { neg = true; v = s.front() - '0'; break; }
-    else if (s.front() == Ct('-')) { neg = true; break; }
-    else s.remove_prefix(1);
-  }
   s.remove_prefix(1);
+  bool e_neg = false;
+  int8 e = 0;
+  if (s.empty()) return neg ? -v : v;
+  else if (s.front() == Ct('-')) e_neg = true, s.remove_prefix(1);
+  else if (s.front() == Ct('+')) s.remove_prefix(1);
   while (1) {
-    if (s.empty()) return neg ? -v : v;
-    else if (is_digit(s.front())) v = v * 10 + s.front() - '0', s.remove_prefix(1);
-    else return neg ? -v : v;
+    if (s.empty()) break;
+    else if (is_digit(s.front())) e = e * 10 + s.front() - '0', s.remove_prefix(1);
+    else break;
   }
-}
-
-template<typename Ct> constexpr nat8 _ston(StringView<Ct>& s) noexcept {
-  nat8 v{};
-  while (1) {
-    if (s.empty()) return v;
-    else if (is_digit(s.front())) { v = s.front() - '0'; break; }
-    else s.remove_prefix(1);
-  }
-  s.remove_prefix(1);
-  while (1) {
-    if (s.empty()) return v;
-    else if (is_digit(s.front())) v = v * 10 + s.front() - '0', s.remove_prefix(1);
-    else return v;
-  }
+  for (int8 i = 0; i < e; ++i) v *= 10;
+  for (int8 i = 0; i > e; --i) v *= 0.1;
+  return neg ? -v : v;
 }
 
 }
@@ -2704,6 +2719,14 @@ template<arithmetic T> inline constexpr auto stov = []<stringable St>(St&& s) no
   }
 };
 
+/// converts a string to a integer value
+inline constexpr auto stoi = stov<int8>;
+
+/// converts a string to a unsigned integer value
+inline constexpr auto ston = stov<nat8>;
+
+/// converts a string to a floating point value
+inline constexpr auto stof = stov<fat8>;
 
 namespace _ {
 template<character Ct> constexpr String<Ct> _ntos(nat8 v) noexcept {
@@ -2722,21 +2745,119 @@ template<character Ct> constexpr String<Ct> _itos(int8 v) noexcept {
   if (neg) temp[--it] = Ct('-');
   return String<Ct>(temp + it, 20 - it);
 }
+constexpr fat8 _ftos_log10(fat8 v) noexcept {
+  int8 t = bitcast<int8>(v);
+  int8 exp = ((t & 0x7ff0000000000000) >> 52) - 1023;
+  t = (t & 0x000fffffffffffff) | 0x3ff0000000000000;
+  return exp * log10_2 - 0.652998017485824 + [&](const fat8 x) noexcept {
+    return x * (0.924793176223418 - 0.319987904734089 * x + 0.0480424904500012 * x * x); }(bitcast<fat8>(t));
+}
 template<character Ct> constexpr String<Ct> _ftos(fat8 v) noexcept {
-  if (v == 0) return String<Ct>(1, Ct('0'));
-  Ct temp[20];
-  nat it = 20;
-  if (v < 0) v = -v, temp[--it] = Ct('-');
-  nat i = nat(v);
-  for (; i != 0; i /= 10) temp[--it] = Ct(i % 10 + '0');
-  if (v != nat(v)) {
-    temp[--it] = Ct('.');
-    for (nat i = 0; i < 6; ++i) {
-      v *= 10;
-      temp[--it] = Ct(nat(v) % 10 + '0');
+  if (v == 0) return String<Ct>(Array{Ct('0'), Ct('.'), Ct('0')});
+  else if (v != v) return String<Ct>(Array{Ct('n'), Ct('a'), Ct('n')});
+  else if (v == yw::inf) return String<Ct>(Array{Ct('i'), Ct('n'), Ct('f')});
+  else if (v == -yw::inf) return String<Ct>(Array{Ct('-'), Ct('i'), Ct('n'), Ct('f')});
+  Ct temp[32]{};
+  const bool neg = v < 0;
+  if (neg) v = -v;
+  int8 exp = int8(_ftos_log10(v)), count{};
+  exp += v < 1 ? -1 : 0;
+  if (exp < -3) {
+    nat mask = 1;
+    for (int8 i = exp; i < 0; ++i) v *= 10;
+    for (int8 i = 0; i < 15; ++i) v *= 10, mask *= 10;
+    nat vv = static_cast<nat>(v), ii{};
+    if (neg) temp[ii++] = Ct('-');
+    temp[ii++] = Ct(vv / mask + '0');
+    vv %= mask, mask /= 10;
+    temp[ii++] = Ct('.');
+    for (int8 i{}; i < 16 && vv != 0; ++i) {
+      if (count == 6) ii -= 6;
+      auto cc = vv / mask;
+      count = cc == 0 ? count + 1 : 0;
+      if (count == 3) return String<Ct>(temp, ii - 6);
+      temp[ii++] = Ct(cc + '0'), vv %= mask, mask /= 10;
     }
+    temp[ii++] = Ct('e');
+    temp[ii++] = Ct('-');
+    exp = -exp;
+    temp[ii++] = Ct(exp / 100 + '0');
+    exp %= 100;
+    temp[ii++] = Ct(exp / 10 + '0');
+    temp[ii++] = Ct(exp % 10 + '0');
+    return String<Ct>(temp, ii);
+  } else if (exp < 0) {
+    nat mask = 1;
+    for (int8 i{}; i < 15; ++i) mask *= 10;
+    for (int8 i{15 - exp}; i > 0; --i) v *= 10;
+    nat vv = static_cast<nat>(v), ii{};
+    if (neg) temp[ii++] = Ct('-');
+    temp[ii++] = Ct('0');
+    temp[ii++] = Ct('.');
+    for (int8 i{exp + 1}; i < 0; ++i) temp[ii++] = Ct('0');
+    for (; vv != 0; vv %= mask, mask /= 10) {
+      auto cc = vv / mask;
+      count = cc == 0 ? count + 1 : 0;
+      if (count == 3) return String<Ct>(temp, ii - 6);
+      temp[ii++] = Ct(cc + '0');
+    }
+    return String<Ct>(temp, ii);
+  } else if (exp < 16) {
+    nat mask = 1;
+    for (int8 i{}; i < 15; ++i) mask *= 10;
+    for (int8 i{}, end = 15 - exp; i < end; ++i) v *= 10;
+    nat vv = static_cast<nat>(v), ii{};
+    if (neg) temp[ii++] = Ct('-');
+    bool dot = false;
+    for (int8 i{}; i < 16 && vv != 0; ++i) {
+      if (!dot && i > exp) temp[ii++] = Ct('.'), dot = true;
+      auto cc = vv / mask;
+      if (dot) {
+        count = cc == 0 ? count + 1 : 0;
+        if (count == 3) return String<Ct>(temp, ii - 6);
+      }
+      temp[ii++] = Ct(cc + '0');
+      vv %= mask;
+      mask /= 10;
+    }
+    return String<Ct>(temp, ii);
+  } else {
+    nat mask = 1;
+    for (int8 i{}; i < 15; ++i) mask *= 10;
+    for (int8 i{}, end = exp - 15; i < end; ++i) v /= 10;
+    nat vv = static_cast<nat>(v), ii{};
+    if (neg) temp[ii++] = Ct('-');
+    temp[ii++] = Ct(vv / mask + '0');
+    vv %= mask, mask /= 10;
+    temp[ii++] = Ct('.');
+    for (int8 i{}; i < 15 && vv != 0; ++i) {
+      if (count == 6) ii -= 6;
+      auto cc = vv / mask;
+      count = cc == 0 ? count + 1 : 0;
+      if (count == 3) return String<Ct>(temp, ii - 6);
+      temp[ii++] = Ct(cc + '0'), vv %= mask, mask /= 10;
+    }
+    temp[ii++] = Ct('e');
+    temp[ii++] = Ct('+');
+    temp[ii++] = Ct(exp / 100 + '0');
+    exp %= 100;
+    temp[ii++] = Ct(exp / 10 + '0');
+    temp[ii++] = Ct(exp % 10 + '0');
+    return String<Ct>(temp, ii);
   }
-  return String<Ct>(temp + it, 20 - it);
 }
 }
+
+/// converts a value to a string
+/// \tparam Ct character type of the string
+/// \param v value to convert
+/// \return converted string
+template<character Ct> inline constexpr auto vtos =
+  []<arithmetic T>(const T v) noexcept -> String<Ct> {
+  if constexpr (floating_point<T>) return _::_ftos<Ct>(v);
+  else if constexpr (std::signed_integral<T>) return _::_itos<Ct>(v);
+  else if constexpr (std::unsigned_integral<T>) return _::_ntos<Ct>(v);
+};
+
+
 } // namespace yw
