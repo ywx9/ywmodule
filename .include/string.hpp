@@ -2556,7 +2556,7 @@ constexpr String<cat1> to_sjis(const StringView<cat2> s) noexcept {
 /// converts the unicode encoding of a string
 /// \param s string to convert
 /// \return converted string
-template<character Out> requires same_as<Out, remove_cv<Out>>
+template<character Out> requires same_as<Out, remove_cvref<Out>>
 constexpr String<Out> cvt(stringable auto&& s) noexcept {
   using In = remove_cvref<iter_value<decltype(s)>>;
   StringView<In> v(s);
@@ -2590,16 +2590,16 @@ constexpr String<Out> cvt(stringable auto&& s) noexcept {
     } else if constexpr (included_in<Out, cat1, uct1>) return cvt<Out>(cvt<uct4>(s));
   } else if constexpr (same_as<In, uct4>) {
     if constexpr (included_in<Out, cat1, uct1>) {
-      String<uct1> r(v.size() * 4, {});
+      String<Out> r(v.size() * 4, {});
       auto p = r.data();
       for (auto i = v.data(), last = i + v.size(); i < last;) {
         uct4 c = *i++;
-        if (c < 0x80) *p++ = uct1(c);
-        else if (c < 0x800) *p++ = uct1(0xc0 | (c >> 6)), *p++ = uct1(0x80 | (c & 0x3f));
-        else if (c < 0x10000) *p++ = uct1(0xe0 | (c >> 12)),
-                              *p++ = uct1(0x80 | ((c >> 6) & 0x3f)), *p++ = uct1(0x80 | (c & 0x3f));
-        else *p++ = uct1(0xf0 | (c >> 18)), *p++ = uct1(0x80 | ((c >> 12) & 0x3f)),
-             *p++ = uct1(0x80 | ((c >> 6) & 0x3f)), *p++ = uct1(0x80 | (c & 0x3f));
+        if (c < 0x80) *p++ = Out(c);
+        else if (c < 0x800) *p++ = Out(0xc0 | (c >> 6)), *p++ = Out(0x80 | (c & 0x3f));
+        else if (c < 0x10000) *p++ = Out(0xe0 | (c >> 12)),
+                              *p++ = Out(0x80 | ((c >> 6) & 0x3f)), *p++ = Out(0x80 | (c & 0x3f));
+        else *p++ = Out(0xf0 | (c >> 18)), *p++ = Out(0x80 | ((c >> 12) & 0x3f)),
+             *p++ = Out(0x80 | ((c >> 6) & 0x3f)), *p++ = Out(0x80 | (c & 0x3f));
       }
       r.resize(p - r.data());
       return r;
@@ -2858,6 +2858,5 @@ template<character Ct> inline constexpr auto vtos =
   else if constexpr (std::signed_integral<T>) return _::_itos<Ct>(v);
   else if constexpr (std::unsigned_integral<T>) return _::_ntos<Ct>(v);
 };
-
 
 } // namespace yw

@@ -1,6 +1,7 @@
 #pragma once
 
 #ifndef YWLIB
+#include <initializer_list>
 #include <vector>
 #else
 import std;
@@ -57,7 +58,6 @@ public:
 /// class to represent a dynamic array
 template<typename T> class Array<T, npos> : public std::vector<T> {
 public:
-  using std::vector<T>::vector;
   constexpr Array() noexcept = default;
   constexpr Array(std::vector<T>&& v) : std::vector<T>(mv(v)) {}
   constexpr explicit Array(nat n) : std::vector<T>(n) {}
@@ -66,6 +66,7 @@ public:
   template<iterator_for<T> It, sentinel_for<It> Se> requires(!same_as<It, Se>)
   constexpr Array(It i, Se s) : std::vector<T>(std::common_iterator<It, Se>(i), std::common_iterator<It, Se>(s)) {}
   template<range_for<T> Rg> constexpr Array(Rg&& r) : std::vector<T>(yw::begin(r), yw::end(r)) {}
+  explicit constexpr Array(std::initializer_list<T> il) : std::vector<T>(il) {}
 };
 
 // deduction guides
@@ -142,7 +143,7 @@ inline constexpr bool array_0 = []() {
 static_assert(array_0);
 
 inline constexpr bool array_npos = []() {
-  Array<int> a = {1, 2, 3};
+  Array<int> a{1, 2, 3};
   if (a[0] != 1) return false;
   if (a[1] != 2) return false;
   if (a[2] != 3) return false;
