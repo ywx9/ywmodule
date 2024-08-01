@@ -1,3 +1,6 @@
+/// \file none.hpp
+/// \brief defines `struct yw::None` and its related definitions
+
 #pragma once
 
 #ifndef YWLIB
@@ -11,34 +14,61 @@ export namespace yw {
 
 /// struct to represent a null value
 struct None {
+
   constexpr None() noexcept = default;
+
   constexpr None(auto&&...) noexcept {}
+
   constexpr None& operator=(auto&&) noexcept { return *this; }
+
   explicit constexpr operator bool() const noexcept { return false; }
+
   constexpr None operator()(auto&&...) const noexcept { return {}; }
+
   constexpr friend bool operator==(None, None) noexcept { return false; }
-  constexpr friend auto operator<=>(None, None) noexcept { return std::partial_ordering::unordered; }
+
+  constexpr friend auto operator<=>(None, None) noexcept {
+    return std::partial_ordering::unordered;
+  }
+
   constexpr friend None operator+(None) noexcept { return {}; }
+
   constexpr friend None operator-(None) noexcept { return {}; }
+
   constexpr friend None operator+(None, None) noexcept { return {}; }
+
   constexpr friend None operator-(None, None) noexcept { return {}; }
+
   constexpr friend None operator*(None, None) noexcept { return {}; }
+
   constexpr friend None operator/(None, None) noexcept { return {}; }
+
   constexpr None& operator+=(None) noexcept { return *this; }
+
   constexpr None& operator-=(None) noexcept { return *this; }
+
   constexpr None& operator*=(None) noexcept { return *this; }
+
   constexpr None& operator/=(None) noexcept { return *this; }
 };
 
+/// constexpr instance of `None`
 inline constexpr None none;
+
+/// checks if `T` is `None`
 template<typename T> concept is_None = std::same_as<std::remove_cv_t<T>, None>;
 
 } // namespace yw
 
+
 namespace std {
+
+// std::common_type
 
 template<typename T> struct common_type<yw::None, T> : type_identity<yw::None> {};
 template<typename T> struct common_type<T, yw::None> : type_identity<yw::None> {};
+
+// std::formatter
 
 template<typename Ct> struct formatter<yw::None, Ct> : formatter<const Ct*, Ct> {
   auto format(yw::None, auto& Ctx) const {
