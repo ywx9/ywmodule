@@ -10,30 +10,15 @@
 
 export namespace yw {
 
+
 /// extended vector type
 using XVector = __m128;
 
 /// extended matrix type
 using XMatrix = Array<XVector, 4>;
 
-
-/// helper for `xv_zero`
-struct XvZero {
-  /// converts to `XVector`
-  operator XVector() const noexcept { return _mm_setzero_ps(); }
-  /// converts to `XMatrix`
-  operator const XMatrix&() const noexcept {
-    static const XMatrix m{_mm_setzero_ps(), _mm_setzero_ps(), _mm_setzero_ps(), _mm_setzero_ps()};
-    return m;
-  }
-};
-
-/// object to represent a zero vector or matrix
-inline constexpr XvZero xv_zero;
-
-
 /// object to represent a constant vector
-template<Value X, Value Y, Value Z, Value W>
+template<Value X, Value Y = X, Value Z = Y, Value W = Z>
 inline constexpr caster xv_constant{
   []() noexcept -> const XVector& {
     static const const XVector& v{_mm_set_ps(W, Z, Y, X)};
@@ -41,14 +26,26 @@ inline constexpr caster xv_constant{
   }
 };
 
+/// specialization for zero vector/matrix
+template<> inline constexpr caster xv_constant<0, 0, 0, 0>{
+  []() noexcept -> XVector { return _mm_setzero_ps(); },
+  []() noexcept -> const XMatrix& {
+    static const XMatrix m{_mm_setzero_ps(), _mm_setzero_ps(), _mm_setzero_ps(), _mm_setzero_ps()};
+    return m;
+  }
+};
+
+/// constant vector/matrix of zero
+inline constexpr auto xv_zero = xv_constant<0>;
+
 /// constant vector of (-0, -0, -0, -0)
-inline constexpr auto xv_neg_zero = xv_constant<-0, -0, -0, -0>;
+inline constexpr auto xv_neg_zero = xv_constant<-0>;
 
 /// constant vector of (1, 1, 1, 1)
-inline constexpr auto xv_one = xv_constant<1, 1, 1, 1>;
+inline constexpr auto xv_one = xv_constant<1>;
 
 /// constant vector of (-1, -1, -1, -1)
-inline constexpr auto xv_neg_one = xv_constant<-1, -1, -1, -1>;
+inline constexpr auto xv_neg_one = xv_constant<-1>;
 
 /// constant vector of (1, 0, 0, 0)
 inline constexpr auto xv_x = xv_constant<1, 0, 0, 0>;
@@ -467,11 +464,14 @@ inline XVector xvreject(const XVector& a, const XVector& b) noexcept {
 }
 
 
-/// convets degrees to radians
+/// converts degrees to radians
 inline XVector xvradian(const XVector& v) noexcept {
-  // return xvmul(v, xv_constant<
+  return xvmul(v, xv_constant<pi / 180>);
 }
 
-
+/// converts radians to degrees
+inline XVector xvdegree(const XVector& v) noexcept {
+  return xvmul(v, xv_constant<180 / pi>);
+}
 
 } // namespace yw
