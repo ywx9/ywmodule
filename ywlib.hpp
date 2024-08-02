@@ -123,8 +123,12 @@ import std;
 
 // ywlib headers
 
+#pragma warning(push)
+#pragma warning(disable: 4459) // declaration of '...' hides global declaration
+
 #include ".include/array.hpp"
 #include ".include/chrono.hpp"
+#include ".include/color.hpp"
 #include ".include/core.hpp"
 #include ".include/file.hpp"
 #include ".include/list.hpp"
@@ -132,9 +136,13 @@ import std;
 #include ".include/projector.hpp"
 #include ".include/sequence.hpp"
 #include ".include/source.hpp"
+#include ".include/status.hpp"
 #include ".include/string.hpp"
 #include ".include/typepack.hpp"
 #include ".include/utility.hpp"
 #include ".include/value.hpp"
+#include ".include/vector.hpp"
 #include ".include/windows.hpp"
 #include ".include/xvector.hpp"
+
+#pragma warning(pop)

@@ -19,16 +19,21 @@ using XMatrix = Array<XVector, 4>;
 
 /// object to represent a constant vector
 template<Value X, Value Y = X, Value Z = Y, Value W = Z>
-inline constexpr caster xv_constant{
+inline constexpr caster XVCONSTANT{
   []() noexcept -> const XVector& {
-    static const const XVector& v{_mm_set_ps(W, Z, Y, X)};
+    static const XVector& v{_mm_set_ps(fat4(W), fat4(Z), fat4(Y), fat4(X))};
     return v;
+  },
+  []() noexcept -> const __m128i& {
+    static const __m128i m{_mm_set_epi32(int4(W), int4(Z), int4(Y), int4(X))};
+    return m;
   }
 };
 
 /// specialization for zero vector/matrix
-template<> inline constexpr caster xv_constant<0, 0, 0, 0>{
+template<> inline constexpr caster XVCONSTANT<0, 0, 0, 0>{
   []() noexcept -> XVector { return _mm_setzero_ps(); },
+  []() noexcept -> __m128i { return _mm_setzero_si128(); },
   []() noexcept -> const XMatrix& {
     static const XMatrix m{_mm_setzero_ps(), _mm_setzero_ps(), _mm_setzero_ps(), _mm_setzero_ps()};
     return m;
@@ -36,40 +41,48 @@ template<> inline constexpr caster xv_constant<0, 0, 0, 0>{
 };
 
 /// constant vector/matrix of zero
-inline constexpr auto xv_zero = xv_constant<0>;
+inline constexpr auto XVZERO = XVCONSTANT<0>;
 
 /// constant vector of (-0, -0, -0, -0)
-inline constexpr auto xv_neg_zero = xv_constant<-0>;
+inline constexpr auto XVNEGZERO = XVCONSTANT<-0>;
 
 /// constant vector of (1, 1, 1, 1)
-inline constexpr auto xv_one = xv_constant<1>;
+inline constexpr auto XVONE = XVCONSTANT<1>;
 
 /// constant vector of (-1, -1, -1, -1)
-inline constexpr auto xv_neg_one = xv_constant<-1>;
+inline constexpr auto XVNEGONE = XVCONSTANT<-1>;
 
 /// constant vector of (1, 0, 0, 0)
-inline constexpr auto xv_x = xv_constant<1, 0, 0, 0>;
+inline constexpr auto XVX = XVCONSTANT<1, 0, 0, 0>;
 
 /// constant vector of (0, 1, 0, 0)
-inline constexpr auto xv_y = xv_constant<0, 1, 0, 0>;
+inline constexpr auto XVY = XVCONSTANT<0, 1, 0, 0>;
 
 /// constant vector of (0, 0, 1, 0)
-inline constexpr auto xv_z = xv_constant<0, 0, 1, 0>;
+inline constexpr auto XVZ = XVCONSTANT<0, 0, 1, 0>;
 
 /// constant vector of (0, 0, 0, 1)
-inline constexpr auto xv_w = xv_constant<0, 0, 0, 1>;
+inline constexpr auto XVW = XVCONSTANT<0, 0, 0, 1>;
 
 /// constant vector of (-1, 0, 0, 0)
-inline constexpr auto xv_neg_x = xv_constant<-1, 0, 0, 0>;
+inline constexpr auto XVNEGX = XVCONSTANT<-1, 0, 0, 0>;
 
 /// constant vector of (0, -1, 0, 0)
-inline constexpr auto xv_neg_y = xv_constant<0, -1, 0, 0>;
+inline constexpr auto XVNEGY = XVCONSTANT<0, -1, 0, 0>;
 
 /// constant vector of (0, 0, -1, 0)
-inline constexpr auto xv_neg_z = xv_constant<0, 0, -1, 0>;
+inline constexpr auto XVNEGZ = XVCONSTANT<0, 0, -1, 0>;
 
 /// constant vector of (0, 0, 0, -1)
-inline constexpr auto xv_neg_w = xv_constant<0, 0, 0, -1>;
+inline constexpr auto XVNEGW = XVCONSTANT<0, 0, 0, -1>;
+
+/// identity matrix
+inline constexpr caster XVIDENTITY{
+  []() noexcept -> const XMatrix& {
+    static const XMatrix m{XVX, XVY, XVZ, XVW};
+    return m;
+  }
+};
 
 
 /// loads a vector from memory to `XVector`
@@ -88,7 +101,17 @@ inline void xvstore(fat4* p, const XVector& v) noexcept { _mm_store_ps(p, v); }
 
 /// inserts a scalar to `I`-th element of `XVector`
 template<nat I> inline XVector xvinsert(const XVector& v, const fat4 x) noexcept {
-  return _mm_castsi128_ps(_mm_insert_epi32(_mm_castps_si128(v), bitcast<int3>(x), I));
+  return _mm_castsi128_ps(_mm_insert_epi32(_mm_castps_si128(v), bitcast<int4>(x), I));
+}
+
+/// inserts `J`-th element of `b` to `I`-th element of `a` and setzero by `Mask`
+/// \param a the target `XVector`; one of this element will be replaced
+/// \param b the source `XVector`; one of this element will be used to replace
+/// \note `a[I] = b[J]; for (nat i = 0; i < 4; ++i) if (Mask & (1 << i)) a[i] = 0;`
+template<nat I, nat J, nat Mask = 0b0000>
+requires (I < 4 && J < 4 && Mask < 16)
+inline XVector xvinsert(const XVector& a, const XVector& b) noexcept {
+  return _mm_insert_ps(a, b, (I << 4) | (J << 6) | Mask);
 }
 
 /// extracts `I`-th element of `XVector`
@@ -123,28 +146,36 @@ inline XVector xvpermute(const XVector& a, const XVector& b) noexcept {
   else if constexpr (X >= 4 && Y >= 4 && Z >= 4 && W >= 4)
     return xvpermute<X - 4, Y - 4, Z - 4, W - 4>(b);
   else if constexpr ((X & 3) == 0 && (Y & 3) == 1 && (Z & 3) == 2 && (W & 3) == 3)
-    return xvblend<X & 4, Y & 4, Z & 4, W & 4>(a, b);
+    return xvblend<X < 4, Y < 4, Z < 4, W < 4>(b, a);
   else if constexpr (X < 4 && Y < 4 && Z >= 4 && W >= 4)
     return _mm_shuffle_ps(a, b, ((W & 3) << 6) | ((Z & 3) << 4) | (Y << 2) | X);
   else if constexpr (X >= 4 && Y >= 4 && Z < 4 && W < 4)
     return _mm_shuffle_ps(b, a, (W << 6) | (Z << 4) | ((Y & 3) << 2) | (X & 3));
-  else if constexpr ((X == 0) + (Y == 1) + (Z == 2) + (W == 3) == 3) noexcept {
+  else if constexpr (X == 0 && Y == 4 && X == 1 && Y == 5)
+    return _mm_unpacklo_ps(a, b);
+  else if constexpr (X == 4 && Y == 0 && X == 5 && Y == 1)
+    return _mm_unpacklo_ps(b, a);
+  else if constexpr (X == 2 && Y == 6 && X == 3 && Y == 7)
+    return _mm_unpackhi_ps(a, b);
+  else if constexpr (X == 6 && Y == 2 && X == 7 && Y == 3)
+    return _mm_unpackhi_ps(b, a);
+  else if constexpr ((X == 0) + (Y == 1) + (Z == 2) + (W == 3) == 3) {
     constexpr nat i = inspects<X != 0, Y != 1, Z != 2, W != 3>;
     constexpr nat j = select_value<i, X, Y, Z, W> - 4;
-    return _mm_shuffle_ps(a, b, int(j << 6 | i << 4));
-  } else if constexpr ((X == 4) + (Y == 5) + (Z == 6) + (W == 7) == 3) noexcept {
+    return _mm_insert_ps(a, b, int(j << 6 | i << 4));
+  } else if constexpr ((X == 4) + (Y == 5) + (Z == 6) + (W == 7) == 3) {
     constexpr nat i = inspects<X != 4, Y != 5, Z != 6, W != 7>;
     constexpr nat j = select_value<i, X, Y, Z, W>;
-    return _mm_shuffle_ps(b, a, int(j << 6 | i << 4));
+    return _mm_insert_ps(b, a, int(j << 6 | i << 4));
   } else if constexpr ((X < 4 || X == 4) && (Y < 4 || Y == 5) && (Z < 4 || Z == 6) && (W < 4 || W == 7))
-    return xvblend<x == 4, y == 5, z == 6, w == 7>(xvpermute<X & 3, Y & 3, Z & 3, W & 3>(a), b);
+    return xvblend<X == 4, Y == 5, Z == 6, W == 7>(xvpermute<X & 3, Y & 3, Z & 3, W & 3>(a), b);
   else if constexpr ((X >= 4 || X == 0) && (Y >= 4 || Y == 1) && (Z >= 4 || Z == 2) && (W >= 4 || W == 3))
-    return xvblend<x == 0, y == 1, z == 2, w == 3>(xvpermute<X & 3, Y & 3, Z & 3, W & 3>(b), a);
-  else if constexpr ((X < 4) + (Y < 4) + (Z < 4) + (W < 4) == 1) noexcept {
+    return xvblend<X == 0, Y == 1, Z == 2, W == 3>(xvpermute<X & 3, Y & 3, Z & 3, W & 3>(b), a);
+  else if constexpr ((X < 4) + (Y < 4) + (Z < 4) + (W < 4) == 1) {
     constexpr nat i = inspects<X < 4, Y < 4, Z < 4, W < 4>;
     constexpr nat j = select_value<i, X, Y, Z, W>;
     return _mm_insert_ps(xvpermute<X & 3, Y & 3, Z & 3, W & 3>(b), a, int(j << 6 | i << 4));
-  } else if constexpr ((X >= 4) + (Y >= 4) + (Z >= 4) + (W >= 4) == 1) noexcept {
+  } else if constexpr ((X >= 4) + (Y >= 4) + (Z >= 4) + (W >= 4) == 1) {
     constexpr nat i = inspects<X >= 4, Y >= 4, Z >= 4, W >= 4>;
     constexpr nat j = select_value<i, X, Y, Z, W> - 4;
     return _mm_insert_ps(xvpermute<X & 3, Y & 3, Z & 3, W & 3>(a), b, int(j << 6 | i << 4));
@@ -174,12 +205,12 @@ inline XVector xvdiv(const XVector& a, const XVector& b) noexcept {
 
 /// calculates the negation of an `XVector`
 inline XVector xvneg(const XVector& v) noexcept {
-  return _mm_xor_ps(v, xv_neg_zero);
+  return _mm_xor_ps(v, XVNEGZERO);
 }
 
 /// calculates the absolute value of an `XVector`
 inline XVector xvabs(const XVector& v) noexcept {
-  return _mm_andnot_ps(xv_neg_zero, v);
+  return _mm_andnot_ps(XVNEGZERO, v);
 }
 
 /// compares two `XVector`s for equality
@@ -466,12 +497,209 @@ inline XVector xvreject(const XVector& a, const XVector& b) noexcept {
 
 /// converts degrees to radians
 inline XVector xvradian(const XVector& v) noexcept {
-  return xvmul(v, xv_constant<pi / 180>);
+  return xvmul(v, XVCONSTANT<pi / 180>);
 }
 
 /// converts radians to degrees
 inline XVector xvdegree(const XVector& v) noexcept {
-  return xvmul(v, xv_constant<180 / pi>);
+  return xvmul(v, XVCONSTANT<180 / pi>);
+}
+
+/// transposes an `XMatrix`
+inline void xvtranspose(const XMatrix& m, XMatrix& r) noexcept {
+  auto a = _mm_unpacklo_ps(m[0], m[1]); // a0, b0, a1, b1
+  auto b = _mm_unpacklo_ps(m[2], m[3]); // c0, d0, c1, d1
+  r[0] = _mm_movelh_ps(a, b);           // a0, b0, c0, d0
+  r[1] = _mm_movehl_ps(b, a);           // a1, b1, c1, d1
+  a = _mm_unpackhi_ps(m[0], m[1]);      // a2, b2, c2, d2
+  b = _mm_unpackhi_ps(m[2], m[3]);      // a3, b3, c3, d3
+  r[2] = _mm_movelh_ps(a, b);           // a2, b2, c2, d2
+  r[3] = _mm_movehl_ps(b, a);           // a3, b3, c3, d3
+}
+
+/// transposes an `XMatrix`
+inline void xvtranspose(XMatrix& m) noexcept {
+  auto a = _mm_unpacklo_ps(m[0], m[1]); // a0, b0, a1, b1
+  auto b = _mm_unpacklo_ps(m[2], m[3]); // c0, d0, c1, d1
+  auto c = _mm_unpackhi_ps(m[0], m[1]); // a2, b2, a3, b3
+  m[0] = _mm_movelh_ps(a, b);           // a0, b0, c0, d0
+  m[1] = _mm_movehl_ps(b, a);           // a1, b1, c1, d1
+  a = _mm_unpackhi_ps(m[2], m[3]);      // c2, d2, c3, d3
+  m[2] = _mm_movelh_ps(c, a);           // a2, b2, c2, d2
+  m[3] = _mm_movehl_ps(a, c);           // a3, b3, c3, d3
+}
+
+/// rotation matrix around the x-axis
+inline void xvrotation_x(numeric auto&& Radian, XMatrix& r) noexcept {
+  auto t = fat4(Radian);
+  r[2] = xvset(0, t, -t, 0);
+  r[3] = _mm_sincos_ps(&r[0], r[2]);
+  r[1] = xvpermute<0, 5, 2, 3>(r[3], r[0]); // 0, c, -s, 0
+  r[2] = xvpermute<0, 1, 6, 3>(r[3], r[0]); // 0, s,  c, 0
+  r[0] = XVX, r[3] = XVW;
+}
+
+/// rotation matrix around the y-axis
+inline void xvrotation_y(numeric auto&& Radian, XMatrix& r) noexcept {
+  auto t = fat4(Radian);
+  r[0] = xvset(-t, 0, t, 0);
+  r[3] = _mm_sincos_ps(&r[1], r[0]);
+  r[2] = xvpermute<0, 1, 6, 3>(r[3], r[1]); // -s, 0, c, 0
+  r[0] = xvpermute<4, 5, 2, 3>(r[3], r[1]); //  c, 0, s, 0
+  r[1] = XVY, r[3] = XVW;
+}
+
+/// rotation matrix around the z-axis
+inline void xvrotation_z(numeric auto&& Radian, XMatrix& r) noexcept {
+  auto t = fat4(Radian);
+  r[1] = xvset(t, -t, 0, 0);
+  r[3] = _mm_sincos_ps(&r[2], r[1]);
+  r[0] = xvpermute<4, 5, 2, 3>(r[3], r[2]); //  c, -s, 0, 0
+  r[1] = xvpermute<0, 5, 2, 3>(r[3], r[2]); //  s,  c, 0, 0
+  r[2] = XVZ, r[3] = XVW;
+}
+
+/// rotation matrix around the x-axis, y-axis, and z-axis
+/// \param Radians {x, y, z, undef}
+/// \param r result
+inline void xvrotation(const XVector& Radians, XMatrix& r) noexcept {
+  r[0] = _mm_sincos_ps(&r[1], Radians);
+  r[2] = xvpermute<0, 2, 4, 6>(r[1], r[0]);
+  r[3] = xvpermute<3, 0, 1, 2>(r[2]);
+  r[2] = xvmul(r[2], r[3]);
+  r[1] = xvmul(r[3], xvpermute<1, 1, 1, 1>(r[1]));
+  r[0] = xvpermute<1, 1, 1, 1>(r[0]);
+  r[3] = _mm_addsub_ps(xvpermute<2, 3, 0, 1>(xvmul(r[0], r[2])), r[2]);
+  r[2] = xvinsert<0, 0, 0b1000>(xvpermute<3, 3, 1, 1>(r[1]), xvneg(r[0]));
+  r[0] = xvinsert<0, 2, 0b1000>(xvpermute<0, 0, 3, 3>(r[3]), r[1]);
+  r[1] = xvinsert<0, 0, 0b1000>(r[3], r[1]);
+  r[3] = XVW;
+}
+
+/// inverse rotation matrix around the x-axis, y-axis, and z-axis
+/// \param Radians {x, y, z, undef}
+/// \param r result
+inline void xvrotation_inv(const XVector& Radians, XMatrix& r) noexcept {
+  r[0] = _mm_sincos_ps(&r[1], Radians);
+  r[2] = xvpermute<4, 6, 0, 2>(r[0], r[1]);
+  r[3] = xvpermute<3, 0, 1, 2>(r[2]);
+  r[2] = xvmul(r[2], r[3]);
+  r[1] = xvmul(xvpermute<1, 1, 1, 1>(r[1]), r[3]);
+  r[0] = xvpermute<1, 1, 1, 1>(r[0]);
+  r[3] = _mm_addsub_ps(xvpermute<2, 3, 0, 1>(xvmul(r[0], r[2])), r[2]);
+  r[2] = xvinsert<2, 1, 0b1000>(xvpermute<3, 2, 3, 2>(r[3]), r[1]);
+  r[0] = xvinsert<2, 2, 0b1000>(xvpermute<2, 0, 2, 0>(r[1]), xvneg(r[0]));
+  r[1] = xvinsert<2, 3, 0b1000>(r[3], r[1]);
+  r[3] = XVW;
+}
+
+/// scaling matrix
+/// \param Scales {x, y, z, undef}
+/// \param r result
+inline void xvscale(const XVector& Scales, XMatrix& r) noexcept {
+  r[0] = xvmul(XVX, Scales);
+  r[1] = xvmul(XVY, Scales);
+  r[2] = xvmul(XVZ, Scales);
+  r[3] = XVW;
+}
+
+/// translation matrix
+/// \param Offsets {x, y, z, undef}
+/// \param r result
+inline void xvtranslation(const XVector& Offsets, XMatrix& r) noexcept {
+  r[0] = xvpermute<0, 1, 2, 4>(XVX, Offsets);
+  r[1] = xvpermute<0, 1, 2, 5>(XVY, Offsets);
+  r[2] = xvpermute<0, 1, 2, 6>(XVZ, Offsets);
+  r[3] = XVW;
+}
+
+/// world matrix
+inline void xvworld(const XVector& Radians, const XVector& Offsets, XMatrix& r) noexcept {
+  xvrotation(Radians, r);
+  r[0] = xvpermute<0, 1, 2, 4>(r[0], Offsets);
+  r[1] = xvpermute<0, 1, 2, 5>(r[1], Offsets);
+  r[2] = xvpermute<0, 1, 2, 6>(r[2], Offsets);
+}
+
+/// world matrix
+inline void xvworld(const XVector& Scales, const XVector& Radians, const XVector& Offsets, XMatrix& r) noexcept {
+  xvworld(Radians, Offsets, r);
+  r[0] = xvmul(r[0], xvpermute<0, 0, 0, 0>(Scales));
+  r[1] = xvmul(r[1], xvpermute<1, 1, 1, 1>(Scales));
+  r[2] = xvmul(r[2], xvpermute<2, 2, 2, 2>(Scales));
+}
+
+/// view matrix
+inline void xvview(const XVector& Radians, const XVector& Position, XMatrix& r) noexcept {
+  xvrotation_inv(Radians, r);
+  r[3] = xvneg(Position);
+  r[0] = xvinsert<3, 3>(r[0], xvdot(r[0], r[3]));
+  r[1] = xvinsert<3, 3>(r[1], xvdot(r[1], r[3]));
+  r[2] = xvinsert<3, 3>(r[2], xvdot(r[2], r[3]));
+  r[3] = XVW;
+}
+
+/// obtains view matrix
+/// \param Offsets camera lens offset from the camera position
+/// \param Radians rotation angles of the camera
+/// \param Position camera position in the world
+/// \param r result
+inline void xvview(const XVector& Offsets, const XVector& Radians, const XVector& Position, XMatrix& r) {
+  xvrotation_inv(Radians, r);
+  r[3] = xvneg(Position);
+  r[0] = xvsub(xvinsert<3, 3>(r[0], xvdot(r[0], r[3])), xvinsert<3, 0, 0b0111>(Offsets, Offsets));
+  r[1] = xvsub(xvinsert<3, 3>(r[1], xvdot(r[1], r[3])), xvinsert<3, 1, 0b0111>(Offsets, Offsets));
+  r[2] = xvsub(xvinsert<3, 3>(r[2], xvdot(r[2], r[3])), xvinsert<3, 2, 0b0111>(Offsets, Offsets));
+  r[3] = XVW;
+}
+
+/// obtains parallel projection matrix
+/// \param Width width of the view
+/// \param Height height of the view
+/// \param Fov field of view
+/// \param r result
+inline void xvprojection(numeric auto&& Width, numeric auto&& Height, numeric auto&& Fov, XMatrix& r) noexcept {
+  constexpr fat4 f = 1048576, n = 0.25;
+  fat4 t = std::tan(Fov * 0.5);
+  r[0] = xvinsert<0>(XVZERO, -Height / (Width * t));
+  r[1] = xvinsert<1>(XVZERO, 1 / t);
+  r[2] = XVCONSTANT<0, 0, f / (f - n), -f * n / (f - n)>;
+  r[3] = XVW;
+}
+
+/// obtains orthographic projection matrix
+/// \param Width width of the view
+/// \param Height height of the view
+/// \param Factor scaling factor
+/// \param r result
+inline void xvprojection_ortho(numeric auto&& Width, numeric auto&& Height, numeric auto&& Factor, XMatrix& r) noexcept {
+  constexpr fat4 f = 1048576, n = 0.25;
+  r[0] = xvinsert<0>(XVZERO, -2.0f * Factor / Width);
+  r[1] = xvinsert<1>(XVZERO, 2.0f * Factor / Height);
+  r[2] = XVCONSTANT<0, 0, 1 / (f - n), -n / (f - n)>;
+  r[3] = XVW;
+}
+
+/// inverses a transformation matrix
+/// \param m matrix to invert
+/// \param r result
+inline void xvinverse_transformation(const XMatrix& m, XMatrix& r) noexcept {
+  xvtranspose(m, r);
+  r[0] = xvblend<0, 0, 0, 1>(r[0], xvneg(m[0]));
+  r[1] = xvblend<0, 0, 0, 1>(r[1], xvneg(m[1]));
+  r[2] = xvblend<0, 0, 0, 1>(r[2], xvneg(m[2]));
+  r[3] = XVW;
+}
+
+/// obtains euler angles from a rotation matrix
+/// \param m rotation matrix
+/// \return euler angles
+inline XVector xveuler(const XMatrix& m) noexcept {
+  auto a = xvneg(xvpermute<3, 0, 3, 3>(m[2]));
+  if (xveq(a, XVY)) return xvasin(xvinsert<0, 1, 0b1100>(a, m[0]));
+  a = xvpermute<4, 1, 0, 3>(a, xvdiv(m[1], m[0]));
+  a = xvpermute<0, 1, 6, 3>(a, xvdiv(xvpermute<0, 0, 1, 1>(m[2]), m[2]));
+  return xvpermute<6, 1, 4, 3>(xvasin(a), xvatan2(xvpermute<0, 1, 5, 3>(m[1], m[2]), xvblend<0, 0, 1, 1>(m[0], m[2])));
 }
 
 } // namespace yw

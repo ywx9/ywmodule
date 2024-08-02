@@ -8,7 +8,6 @@
 import std;
 #endif
 
-#include "windows.hpp"
 #include "chrono.hpp"
 #include "source.hpp"
 
@@ -111,9 +110,5 @@ public:
   /// \param Text text to log
   void fatal(stv1 Text) { if (level <= Level::FATAL) write("FATAL", Text); }
 };
-
-
-/// default logger
-inline Logger logger{Path(argv[0]).replace_extension(".log")};
 
 } // namespace yw

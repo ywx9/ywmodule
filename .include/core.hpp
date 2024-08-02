@@ -280,7 +280,7 @@ public:
     requires invocable<select_type<k<As...>, Fs...>, As...> { return select_type<k<As...>, Fs...>::operator()(fwd<As>(Args)...); }
 };
 
-inline constexpr caster is_cev{[]() noexcept { return std::is_constant_evaluated(); }};
+inline constexpr caster IS_CEV{[]() noexcept { return std::is_constant_evaluated(); }};
 
 namespace _ {
 template<typename T> struct _iter_t {};
