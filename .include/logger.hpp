@@ -13,6 +13,7 @@ import std;
 
 export namespace yw {
 
+
 /// class to represent a path
 using Path = std::filesystem::path;
 
@@ -110,5 +111,10 @@ public:
   /// \param Text text to log
   void fatal(stv1 Text) { if (level <= Level::FATAL) write("FATAL", Text); }
 };
+
+
+/// global logger
+// \note The file path is replaced if `"windows.hpp"` is included.
+inline Logger logger("log.txt");
 
 } // namespace yw

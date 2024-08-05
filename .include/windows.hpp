@@ -15,8 +15,10 @@
 
 export namespace yw {
 
+
 /// window handle
 using HWND = ::HWND;
+
 
 /// command line arguments; argv[0] is the program name
 inline const Array<str1> argv = [] {
@@ -24,12 +26,9 @@ inline const Array<str1> argv = [] {
   auto a = ::CommandLineToArgvW(::GetCommandLineW(), &argc);
   Array<str1> r(argc);
   for (; 0 <= --argc;) r[argc] = cvt<cat1>(a[argc]);
+  logger.file = Path(r[0]).replace_extension(".log");
   return r;
 }();
-
-
-/// default logger
-inline Logger logger{Path(argv[0]).replace_extension(".log")};
 
 
 /// stopwatch class

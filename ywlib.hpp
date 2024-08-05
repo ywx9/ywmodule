@@ -135,6 +135,7 @@ import std;
 #include ".include/none.hpp"
 #include ".include/projector.hpp"
 #include ".include/sequence.hpp"
+#include ".include/sha256.hpp"
 #include ".include/source.hpp"
 #include ".include/status.hpp"
 #include ".include/string.hpp"

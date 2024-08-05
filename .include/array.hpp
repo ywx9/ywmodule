@@ -1,8 +1,11 @@
+/// \file array.hpp
+
 #pragma once
 
 #ifndef YWLIB
 #include <initializer_list>
 #include <vector>
+#include <string_view>
 #else
 import std;
 #endif
@@ -10,6 +13,7 @@ import std;
 #include "core.hpp"
 
 export namespace yw {
+
 
 /// class to represent a fixed-size array
 template<typename T, nat N = npos> class Array {
@@ -35,6 +39,9 @@ public:
 
   /// conversion operator to lvalue reference to the base array (const)
   constexpr operator add_lvref<const T[N]>() const noexcept { return array; }
+
+  /// conversion operator to string view
+  constexpr operator std::basic_string_view<T>() const noexcept { return {array, N}; }
 
   /// index operator to access the element at index `I`
   constexpr T& operator[](const nat I) { return array[I]; }
@@ -106,6 +113,9 @@ public:
   /// type of the elements in the array
   using value_type = T;
 
+  /// conversion operator to string view
+  constexpr operator std::basic_string_view<T>() const noexcept { return {}; }
+
   /// returns number of elements in the array
   constexpr nat size() const noexcept { return 0; }
 
@@ -164,6 +174,10 @@ public:
 
   /// constructor with the initializer list
   explicit constexpr Array(std::initializer_list<T> il) : std::vector<T>(il) {}
+
+  /// conversion operator to string view
+  constexpr operator std::basic_string_view<T>() const
+    noexcept { return {this->data(), this->size()}; }
 };
 
 // deduction guides
