@@ -5,25 +5,197 @@
 #pragma comment(lib, "user32.lib")
 #include <shellapi.h>
 #pragma comment(lib, "shell32.lib")
+#include <wingdi.h>
+#pragma comment(lib, "gdi32.lib")
 #undef max
 #undef min
 #undef ERROR
+#undef CreateWindow
+#undef DefWindowProc
+#undef FormatMessage
+#undef GetCommandLine
+#undef GetModuleHandle
+#undef GetObject
+#undef GetWindowText
+#undef GetWindowTextLength
+#undef LoadCursor
+#undef MessageBox
+#undef RegisterClass
+#undef SendMessage
+#undef SetWindowText
 
 #include "array.hpp"
+#include "exception.hpp"
 #include "string.hpp"
 #include "logger.hpp"
+#include "vector.hpp"
+
+/// namespace for Windows API
+export namespace yw::win {
+
+using HBRUSH = ::HBRUSH;
+using HCURSOR = ::HCURSOR;
+using HGDIOBJ = ::HGDIOBJ;
+using HFONT = ::HFONT;
+using HICON = ::HICON;
+using HINSTANCE = ::HINSTANCE;
+using HMENU = ::HMENU;
+using HWND = ::HWND;
+
+using LARGE_INTEGER = ::LARGE_INTEGER;
+using LOGFONT = ::LOGFONTW;
+using POINT = ::POINT;
+using RECT = ::RECT;
+using WNDCLASS = ::WNDCLASSEXW;
+using WNDPROC = ::WNDPROC;
+
+inline cat2** CommandLineToArgv(const cat2* CommandLine, int* argc) {
+  return ::CommandLineToArgvW(CommandLine, argc);
+}
+
+inline HWND CreateWindow(
+  nat4 ExStyle, const cat2* ClassName, const cat2* WindowName, nat4 Style,
+  int4 X, int4 Y, int4 Width, int4 Height,
+  HWND Parent, HMENU Menu, HINSTANCE Instance, void* Param) {
+  return ::CreateWindowExW(
+    ExStyle, ClassName, WindowName, Style,
+    X, Y, Width, Height, Parent, Menu, Instance, Param);
+}
+
+inline int8 DefWindowProc(HWND Window, nat4 Message, nat8 WParam, int8 LParam) {
+  return ::DefWindowProcW(Window, Message, WParam, LParam);
+}
+
+inline int4 DestroyWindow(HWND Window) {
+  return ::DestroyWindow(Window);
+}
+
+inline nat4 FormatMessage(
+  nat4 Flags, const void* Source, nat4 MessageId, nat4 LanguageId,
+  cat2* Buffer, nat4 Size, va_list* Arguments) {
+  return ::FormatMessageW(Flags, Source, MessageId, LanguageId, Buffer, Size, Arguments);
+}
+
+inline const cat2* GetCommandLine() {
+  return ::GetCommandLineW();
+}
+
+inline int4 GetCursorPos(POINT* Point) {
+  return ::GetCursorPos(Point);
+}
+
+inline HWND GetDesktopWindow() {
+  return ::GetDesktopWindow();
+}
+
+inline nat4 GetLastError() {
+  return ::GetLastError();
+}
+
+inline HINSTANCE GetModuleHandle(const cat2* ModuleName) {
+  return ::GetModuleHandleW(ModuleName);
+}
+
+inline int4 GetObject(HGDIOBJ Object, int4 BufferSize, void* Buffer) {
+  return ::GetObjectW(Object, BufferSize, Buffer);
+}
+
+inline HGDIOBJ GetStockObject(int4 Object) {
+  return ::GetStockObject(Object);
+}
+
+inline int4 GetSystemMetrics(int4 Index) {
+  return ::GetSystemMetrics(Index);
+}
+
+inline int4 GetWindowRect(HWND Window, RECT* Rect) {
+  return ::GetWindowRect(Window, Rect);
+}
+
+inline int4 GetWindowText(HWND Window, cat2* Buffer, int4 Length) {
+  return ::GetWindowTextW(Window, Buffer, Length);
+}
+
+inline int4 GetWindowTextLength(HWND Window) {
+  return ::GetWindowTextLengthW(Window);
+}
+
+inline HCURSOR LoadCursor(HINSTANCE Instance, const cat2* CursorName) {
+  return ::LoadCursorW(Instance, CursorName);
+}
+
+inline int4 MessageBox(HWND Window, const cat2* Text, const cat2* Caption, nat4 Type) {
+  return ::MessageBoxW(Window, Text, Caption, Type);
+}
+
+inline int4 QueryPerformanceCounter(LARGE_INTEGER* PerformanceCount) {
+  return ::QueryPerformanceCounter(PerformanceCount);
+}
+
+inline int4 QueryPerformanceFrequency(LARGE_INTEGER* Frequency) {
+  return ::QueryPerformanceFrequency(Frequency);
+}
+
+inline int2 RegisterClass(const WNDCLASS& WndClass) {
+  return ::RegisterClassExW(&WndClass);
+}
+
+inline void RegisterClass(WNDCLASS&& WndClass) = delete;
+
+inline int4 ScreenToClient(HWND Window, POINT* Point) {
+  return ::ScreenToClient(Window, Point);
+}
+
+inline int8 SendMessage(HWND Window, nat4 Message, nat8 WParam, int8 LParam) {
+  return ::SendMessageW(Window, Message, WParam, LParam);
+}
+
+inline HWND SetFocus(HWND Window) {
+  return ::SetFocus(Window);
+}
+
+inline int4 SetWindowText(HWND Window, const cat2* Text) {
+  return ::SetWindowTextW(Window, Text);
+}
+
+} // namespace yw::win
+
 
 export namespace yw {
 
 
-/// window handle
-using HWND = ::HWND;
+/// instance handle
+inline const win::HINSTANCE INSTANCE_HANDLE = [] {
+  if (auto hi = win::GetModuleHandle(nullptr); !hi) {
+    logger.fatal("Failed to initialize the instance handle");
+    std::cerr << "Failed to initialize the instance handle" << std::endl;
+    return win::HINSTANCE{};
+  } else return hi;
+}();
+
+
+/// default font handle
+inline const win::HFONT SYSTEM_FONT_HANDLE = [] {
+  if (auto hf = (win::HFONT)win::GetStockObject(SYSTEM_FONT); !hf) {
+    logger.fatal("Failed to initialize the default font handle");
+    std::cerr << "Failed to initialize the default font handle" << std::endl;
+    return win::HFONT{};
+  } else return hf;
+}();
+
+
+/// default font size in pixels
+inline const fat4 DEFAULT_FONT_SIZE = [] {
+  win::LOGFONT lf;
+  win::GetObject(SYSTEM_FONT_HANDLE, sizeof(lf), &lf);
+  return std::abs(lf.lfHeight) * cev(96.f / 72.f);
+}();
 
 
 /// command line arguments; argv[0] is the program name
 inline const Array<str1> argv = [] {
   int argc;
-  auto a = ::CommandLineToArgvW(::GetCommandLineW(), &argc);
+  auto a = win::CommandLineToArgv(win::GetCommandLine(), &argc);
   Array<str1> r(argc);
   for (; 0 <= --argc;) r[argc] = cvt<cat1>(a[argc]);
   logger.file = Path(r[0]).replace_extension(".log");
@@ -31,11 +203,25 @@ inline const Array<str1> argv = [] {
 }();
 
 
+/// reinterprets `HRESULT` and throws an exception if failed
+inline void tiff(HRESULT hr, const Source& _ = {}) {
+  if (SUCCEEDED(hr)) return;
+  str2 buffer(256, 0);
+  win::FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                     nullptr, hr, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                     buffer.data(), nat4(buffer.size()), nullptr);
+  auto text = cvt<cat1>(buffer);
+  text = std::format("{} (0x{:08x})", text, nat4(hr));
+  logger.debug(text, _);
+  throw exception(text.c_str(), _);
+}
+
+
 /// stopwatch class
 class Stopwatch {
 
   inline static const fat8 FREQ = [](LARGE_INTEGER _) {
-    return ::QueryPerformanceFrequency(&_), fat8(_.QuadPart); }({});
+    return win::QueryPerformanceFrequency(&_), fat8(_.QuadPart); }({});
 
   mutable LARGE_INTEGER li;
   int8 last;
@@ -43,70 +229,176 @@ class Stopwatch {
 public:
 
   /// default constructor; initializes the stopwatch
-  Stopwatch() noexcept : li{}, last{(::QueryPerformanceCounter(&li), li.QuadPart)} {}
+  Stopwatch() noexcept : li{}, last{(win::QueryPerformanceCounter(&li), li.QuadPart)} {}
 
   /// function call operator which returns the elapsed time in seconds
   fat8 operator()() const noexcept { return *this; }
 
   /// conversion operator which returns the elapsed time in seconds
   operator fat8() const noexcept {
-    return ::QueryPerformanceCounter(&li), (li.QuadPart - last) / FREQ;
+    return win::QueryPerformanceCounter(&li), (li.QuadPart - last) / FREQ;
   }
 
   /// conversion operator to `fat4` which is the elapsed time in seconds
   explicit operator fat4() const noexcept { return fat4(operator fat8()); }
 
   /// resets the stopwatch to zero
-  void reset() noexcept { ::QueryPerformanceCounter(&li), last = li.QuadPart; }
+  void reset() noexcept { win::QueryPerformanceCounter(&li), last = li.QuadPart; }
 
   /// returns the elapsed time in seconds and resets the stopwatch to zero
   fat8 split() noexcept {
-    ::QueryPerformanceCounter(&li);
+    win::QueryPerformanceCounter(&li);
     return (li.QuadPart - exchange(last, li.QuadPart)) / FREQ;
   }
 };
 
 
 /// displays a message box with a `OK` button
-/// \param Window (optional) window handle
 /// \param Text message text
 /// \param Caption (optional) message caption
 /// \return `true` if the user clicks the `OK` button
-inline constexpr Overload ok{
-  [](const str1& Text, const str1& Caption = "OK?") -> bool {
-    return ::MessageBoxA(0, Text.data(), Caption.data(), MB_ICONEXCLAMATION | MB_OK) == IDOK;
-  },
-  [](const str2& Text, const str2& Caption = L"OK?") -> bool {
-    return ::MessageBoxW(nullptr, Text.c_str(), Caption.c_str(), MB_ICONEXCLAMATION | MB_OK) == IDOK;
-  },
-  [](const HWND Window, const str1& Text, const str1& Caption = "OK?") -> bool {
-    return ::MessageBoxA(Window, Text.c_str(), Caption.c_str(), MB_ICONEXCLAMATION | MB_OK) == IDOK;
-  },
-  [](const HWND Window, const str2& Text, const str2& Caption = L"OK?") -> bool {
-    return ::MessageBoxW(Window, Text.c_str(), Caption.c_str(), MB_ICONEXCLAMATION | MB_OK) == IDOK;
-  }
-};
+constexpr bool ok(stringable auto&& Text, stringable auto&& Caption) {
+  auto text = cvt<cat2>(Text), caption = cvt<cat2>(Caption);
+  return win::MessageBox(nullptr, text.c_str(), caption.c_str(), MB_ICONEXCLAMATION | MB_OK) == IDOK;
+}
+
+/// displays a message box with a `OK` button
+/// \param Text message text
+/// \return `true` if the user clicks the `OK` button
+constexpr bool ok(stringable auto&& Text) { return ok(Text, "OK?"); }
+
 
 /// displays a message box with `Yes` and `No` buttons
-/// \param Window (optional) window handle
 /// \param Text message text
 /// \param Caption (optional) message caption
 /// \return `true` if the user clicks the `Yes` button; otherwise, `false`
-inline constexpr Overload yes{
-  [](const str1& Text, const str1& Caption = "Yes?") -> bool {
-    return ::MessageBoxA(nullptr, Text.c_str(), Caption.c_str(), MB_ICONQUESTION | MB_YESNO) == IDYES;
-  },
-  [](const str2& Text, const str2& Caption = L"Yes?") -> bool {
-    return ::MessageBoxW(nullptr, Text.c_str(), Caption.c_str(), MB_ICONQUESTION | MB_YESNO) == IDYES;
-  },
-  [](const HWND Window, const str1& Text, const str1& Caption = "Yes?") -> bool {
-    return ::MessageBoxA(Window, Text.c_str(), Caption.c_str(), MB_ICONQUESTION | MB_YESNO) == IDYES;
-  },
-  [](const HWND Window, const str2& Text, const str2& Caption = L"Yes?") -> bool {
-    return ::MessageBoxW(Window, Text.c_str(), Caption.c_str(), MB_ICONQUESTION | MB_YESNO) == IDYES;
-  }
-};
+constexpr bool yes(stringable auto&& Text, stringable auto&& Caption) {
+  auto text = cvt<cat2>(Text), caption = cvt<cat2>(Caption);
+  return win::MessageBox(nullptr, text.c_str(), caption.c_str(), MB_ICONQUESTION | MB_YESNO) == IDYES;
+}
 
+/// displays a message box with `Yes` and `No` buttons
+/// \param Text message text
+/// \return `true` if the user clicks the `Yes` button; otherwise, `false`
+constexpr bool yes(stringable auto&& Text) { return yes(Text, "Yes?"); }
+
+
+/// obtains the cursor position
+inline Vector get_cursor_pos(HWND hw = nullptr) {
+  POINT pt;
+  win::GetCursorPos(&pt);
+  if (hw) win::ScreenToClient(hw, &pt);
+  return {pt.x, pt.y};
+}
+
+
+/// obtains the font information (Windows API)
+inline win::LOGFONT get_logfont(HFONT hf) {
+  win::LOGFONT lf;
+  auto n = win::GetObject(hf, sizeof(lf), &lf);
+  if (!n) tiff(HRESULT_FROM_WIN32(win::GetLastError()));
+  return lf;
+}
+
+
+/// obtains the size of the virtaul screen
+inline Vector get_virtual_screen_size() {
+  return {win::GetSystemMetrics(SM_CXVIRTUALSCREEN),
+          win::GetSystemMetrics(SM_CYVIRTUALSCREEN)};
+}
+
+
+/// obtains the size of a window
+/// \param hw window handle
+/// \return `{width, height, 0, 0}`
+inline Vector get_window_size(HWND hw) {
+  win::RECT r;
+  win::GetWindowRect(hw, &r);
+  return {r.right - r.left, r.bottom - r.top};
+}
+
+
+/// obtains the text of a window
+str2 get_window_text(HWND hw) {
+  str2 r(win::GetWindowTextLength(hw), 0);
+  win::GetWindowText(hw, r.data(), int(r.size() + 1));
+  return r;
+}
+
+
+namespace _ {
+bool _input_alive = false;
+struct _input_data_t { const cat2* text; str2* result; };
+int8 WINAPI _input_proc(HWND hw, nat4 msg, nat8 wp, int8 lp) {
+  static _input_data_t data;
+  static HWND hw_text, hw_edit, hw_button;
+  if (msg == WM_CREATE) {
+    auto* p = reinterpret_cast<CREATESTRUCTW*>(lp);
+    data = *reinterpret_cast<_input_data_t*>(p->lpCreateParams);
+    auto height = int4(DEFAULT_FONT_SIZE);
+    hw_text = win::CreateWindow(0, L"STATIC", data.text, WS_CHILD | WS_BORDER | WS_VISIBLE | SS_LEFT | SS_CENTERIMAGE,
+                                2, 2, p->cx - 4, height, hw, nullptr, nullptr, nullptr);
+    hw_edit = win::CreateWindow(0, L"EDIT", nullptr, WS_CHILD | WS_BORDER | WS_TABSTOP | WS_VISIBLE | ES_AUTOHSCROLL,
+                                2, 4 + height, p->cx - 4, height, hw, nullptr, nullptr, nullptr);
+    hw_button = win::CreateWindow(0, L"BUTTON", L"OK", WS_CHILD | WS_BORDER | WS_TABSTOP | WS_VISIBLE | BS_DEFPUSHBUTTON,
+                                  2, 6 + 2 * height, p->cx - 4, height, hw, nullptr, nullptr, nullptr);
+    win::SendMessage(hw_text, WM_SETFONT, (nat8)SYSTEM_FONT_HANDLE, 0);
+    win::SendMessage(hw_edit, WM_SETFONT, (nat8)SYSTEM_FONT_HANDLE, 0);
+    win::SendMessage(hw_button, WM_SETFONT, (nat8)SYSTEM_FONT_HANDLE, 0);
+    win::SetFocus(hw_edit);
+    _input_alive = true;
+  } else if (msg == WM_COMMAND) {
+    if (HIWORD(wp) == BN_CLICKED) {
+      *data.result = get_window_text(hw_edit);
+      win::DestroyWindow(hw);
+      return 0;
+    }
+  } else if (msg == WM_CLOSE) return win::DestroyWindow(hw), 0;
+  else if (msg == WM_DESTROY) return _input_alive = false, 0;
+  return win::DefWindowProc(hw, msg, wp, lp);
+}
+inline str2 _input(const str2& Text, int4 Width) {
+  struct Data {
+    const cat2* text;
+    str2* result;
+  };
+  const win::WNDCLASS wc{
+    sizeof(win::WNDCLASS), 0, _input_proc, 0, 0, INSTANCE_HANDLE, nullptr,
+    win::LoadCursor(nullptr, (const cat2*)IDC_ARROW),
+    (HBRUSH)win::GetStockObject(BLACK_BRUSH), nullptr, L"YWINPUT", nullptr};
+  static const auto atom = win::RegisterClass(wc);
+  if (!atom) {
+    tiff(HRESULT_FROM_WIN32(::GetLastError()));
+    throw std::runtime_error("RegisterClass failed");}
+  str2 result;
+  Data data{Text.c_str(), &result};
+  auto sz = get_virtual_screen_size();
+  auto cp = get_cursor_pos();
+  std::cout << cp.x << ", " << cp.y << std::endl;
+  auto height = int4(DEFAULT_FONT_SIZE) * 3 + 8;
+  sz.x = cp.x < sz.x / 2 ? cp.x : cp.x - Width;
+  sz.y = cp.y < sz.y / 2 ? cp.y : cp.y - height;
+  auto hw = win::CreateWindow(
+    0, wc.lpszClassName, Text.c_str(), WS_POPUP,
+    int4(sz.x), int4(sz.y), Width + 4, height, nullptr, nullptr, INSTANCE_HANDLE, &data);
+  if (!hw) throw std::runtime_error("CreateWindow failed");
+  ::ShowWindow(hw, SW_SHOWNORMAL);
+  MSG msg;
+  while (_input_alive && ::GetMessageW(&msg, nullptr, 0, 0) > 0) {
+    ::TranslateMessage(&msg);
+    ::DispatchMessageW(&msg);
+  }
+  return result;
+}
+
+}
+
+
+/// displays a input window with a label, a text box, and an `OK` button
+/// \note The window returns the input text when the user clicks the `OK` button.
+inline str2 input(const str2& Text, numeric auto Width) {
+  return _::_input(Text, Width);
+}
 
 /// user-defined procedure to hack the dfault window procedure
 /// \return `true` if the message is processed; otherwise, `false`
@@ -158,19 +450,6 @@ export namespace yw::win {
 /// window handle type
 using HWND = ::HWND;
 
-/// reinterprets `HRESULT` and throws an exception if failed
-inline void tiff(HRESULT hr, const Source& _ = {}) {
-  if (SUCCEEDED(hr)) return;
-  str2 buffer(256, 0);
-  ::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                   nullptr, hr, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                   buffer.data(), nat4(buffer.size()), nullptr);
-  auto text = cvt<cat1>(buffer);
-  logger.debug(text, _);
-  text = std::format("HRESULT({:08x}) error: {} ({} at {}({},{}))",
-                      hr, text, _.func, _.file, _.line, _.column);
-  throw std::runtime_error(text.c_str());
-}
 
 /// window message type
 enum class WindowMessage : nat4 {

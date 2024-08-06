@@ -1,8 +1,10 @@
 #pragma once
 
+#include "array.hpp"
 #include "list.hpp"
 
 export namespace yw {
+
 
 /// helper for min/max functions
 template<bool Max> struct t_max {
@@ -90,7 +92,7 @@ inline constexpr auto rotr =
 
 
 /// bitwise reverse
-inline constexpr auto bitreverse =
+inline constexpr auto reverse_bits =
 []<std::unsigned_integral T>(T x) noexcept -> T {
   // std::cout << typeid(T).name() << std::endl;
   // std::cout << sizeof(T) << std::endl;
@@ -123,4 +125,25 @@ inline constexpr auto bitreverse =
     return x;
   }
 };
+
+
+/// reverses the endianness of an integer
+inline constexpr auto reverse_endian =
+[]<trivial T>(T&& a) noexcept -> T {
+  if constexpr (sizeof(T) == 1) return a;
+  else if constexpr (sizeof(T) == 2) return (a >> 8) | (a << 8);
+  else if constexpr (sizeof(T) == 4)
+    return (a >> 24) | ((a >> 8) & 0x0000FF00) | ((a << 8) & 0x00FF0000) | (a << 24);
+  else if constexpr (sizeof(T) == 8)
+    return (a >> 56) | ((a >> 40) & 0x000000000000FF00) | ((a >> 24) & 0x0000000000FF0000) |
+                       ((a >>  8) & 0x00000000FF000000) | ((a <<  8) & 0x000000FF00000000) |
+                       ((a << 24) & 0x0000FF0000000000) | ((a << 40) & 0x00FF000000000000) | (a << 56);
+  else {
+    auto b = bitcast<Array<nat1, sizeof(T)>>(a);
+    for (nat i{}; i < sizeof(T) / 2; ++i) swap(b[i], b[sizeof(T) - i - 1]);
+    return bitcast<T>(b);
+  }
+};
+
+
 } // namespace yw

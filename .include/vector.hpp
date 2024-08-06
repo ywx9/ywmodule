@@ -16,16 +16,16 @@ struct Vector {
 
   explicit constexpr Vector(const fat4& Fill) noexcept : x(Fill), y(Fill), z(Fill), w(Fill) {}
 
-  explicit constexpr Vector(const numeric auto&& Fill) noexcept : Vector(fat4(Fill)) {}
+  explicit constexpr Vector(numeric auto&& Fill) noexcept : Vector(fat4(Fill)) {}
 
-  constexpr Vector(const numeric auto&& X, const numeric auto&& Y,
-                   const numeric auto&& Z, const numeric auto&& W) noexcept
+  constexpr Vector(numeric auto&& X, numeric auto&& Y,
+                   numeric auto&& Z, numeric auto&& W) noexcept
     : x(fat4(X)), y(fat4(Y)), z(fat4(Z)), w(fat4(W)) {}
 
-  constexpr Vector(const numeric auto&& X, const numeric auto&& Y,  const numeric auto&& Z) noexcept
+  constexpr Vector(numeric auto&& X, numeric auto&& Y,  numeric auto&& Z) noexcept
     : x(fat4(X)), y(fat4(Y)), z(fat4(Z)) {}
 
-  constexpr Vector(const numeric auto&& X, const numeric auto&& Y) noexcept
+  constexpr Vector(numeric auto&& X, numeric auto&& Y) noexcept
     : x(fat4(X)), y(fat4(Y)) {}
 
   Vector(const XVector& v) noexcept { _mm_store_ps(&x, v); }

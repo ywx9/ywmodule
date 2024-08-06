@@ -280,7 +280,19 @@ public:
     requires invocable<select_type<k<As...>, Fs...>, As...> { return select_type<k<As...>, Fs...>::operator()(fwd<As>(Args)...); }
 };
 
-inline constexpr caster IS_CEV{[]() noexcept { return std::is_constant_evaluated(); }};
+
+/// checks if the code is in the constant evaluation
+/// \note Used as the condition of `if`.
+inline constexpr caster IS_CEV{
+[]() noexcept { return std::is_constant_evaluated(); }
+};
+
+
+/// checks if the code is not in the constant evaluation
+/// \note Put this anywhere in the code, and if constant evaluation is detected, the program will not compile.
+constexpr void cannot_be_constant_evaluated(auto&&...) {
+  if (IS_CEV) throw "This code cannot be constant evaluated.";
+}
 
 namespace _ {
 template<typename T> struct _iter_t {};
