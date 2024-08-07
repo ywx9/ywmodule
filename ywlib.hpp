@@ -131,6 +131,7 @@ import std;
 #include ".include/color.hpp"
 #include ".include/core.hpp"
 #include ".include/file.hpp"
+#include ".include/input.hpp"
 #include ".include/list.hpp"
 #include ".include/none.hpp"
 #include ".include/projector.hpp"
