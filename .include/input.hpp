@@ -23,14 +23,11 @@ export inline const win::WNDCLASS _input_wc{
 /// atom for input window
 export inline const nat4 _input_atom = win::RegisterClass(_input_wc);
 
-/// edit control handle of input window
-export inline HWND _input_edit = nullptr;
-
 /// internal function to create input window
 inline str2 _input(const str2& Text, int4 Width) {
   if (!_input_atom) return tiff(HRESULT_FROM_WIN32(::GetLastError())), str2{};
   str2 result;
-  auto virtual_screen_size = get_virtual_screen_size();
+  auto virtual_screen_size = get_window_size();
   auto cursor_position = get_cursor_pos();
   auto height = int4(DEFAULT_FONT_SIZE) * 3 + 8;
   virtual_screen_size.x = cursor_position.x < virtual_screen_size.x / 2 ?
@@ -41,7 +38,7 @@ inline str2 _input(const str2& Text, int4 Width) {
     0, _input_wc.lpszClassName, Text.c_str(), WS_POPUP,
     int4(virtual_screen_size.x), int4(virtual_screen_size.y),
     Width + 4, height, nullptr, nullptr, INSTANCE_HANDLE, nullptr);
-  if (!hw) throw exception("Failed to create input window");
+  if (!hw) throw Exception("Failed to create input window");
   auto style = WS_CHILD | WS_BORDER | WS_VISIBLE | SS_LEFT | SS_CENTERIMAGE;
   auto hw_text = win::CreateWindow(
     0, L"STATIC", Text.c_str(), style, 2, 2,
@@ -60,10 +57,6 @@ inline str2 _input(const str2& Text, int4 Width) {
   win::SetFocus(hw_edit);
   win::ShowWindow(hw, SW_SHOWNORMAL);
   MSG msg;
-  std::cout << "input window: " << hw << std::endl;
-  std::cout << "edit window: " << hw_edit << std::endl;
-  std::cout << "button window: " << hw_button << std::endl;
-  std::cout << "text window: " << hw_text << std::endl;
   while (bool(hw) && win::GetMessage(msg, 0, 0, 0) > 0) {
     if (msg.message == WM_USER) {
       result = get_window_text(hw_edit);

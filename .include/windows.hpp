@@ -55,6 +55,10 @@ using RECT = ::RECT;
 using WNDCLASS = ::WNDCLASSEXW;
 using WNDPROC = ::WNDPROC;
 
+inline int4 AdjustWindowRect(RECT* Rect, nat4 Style, int4 Menu, nat4 ExStyle) {
+  return ::AdjustWindowRectEx(Rect, Style, Menu, ExStyle);
+}
+
 inline cat2** CommandLineToArgv(const cat2* CommandLine, int* argc) {
   return ::CommandLineToArgvW(CommandLine, argc);
 }
@@ -196,7 +200,11 @@ inline int4 TranslateMessage(const MSG& Message) {
 
 inline void TranslateMessage(MSG&& Message) = delete;
 
-} // namespace yw::win
+inline int4 UpdateWindow(HWND Window) {
+  return ::UpdateWindow(Window);
+}
+
+} // namespace yw::win /////////////////////////////////////////////////////////
 
 
 export namespace yw {
@@ -241,6 +249,17 @@ inline const Array<str1> argv = [] {
 }();
 
 
+/// obtains `HRESULT` message
+inline str2 hresult_message(HRESULT hr) noexcept {
+  str2 buffer(256, 0);
+  win::FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                     nullptr, hr, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                     buffer.data(), nat4(buffer.size()), nullptr);
+  buffer.resize(strlen(buffer.data()));
+  return buffer;
+}
+
+
 /// reinterprets `HRESULT` and throws an exception if failed
 inline void tiff(HRESULT hr, const Source& _ = {}) {
   if (SUCCEEDED(hr)) return;
@@ -251,7 +270,7 @@ inline void tiff(HRESULT hr, const Source& _ = {}) {
   auto text = cvt<cat1>(buffer);
   text = std::format("{} (0x{:08x})", text, nat4(hr));
   logger.debug(text, _);
-  throw exception(text.c_str(), _);
+  throw Exception(text.c_str(), _);
 }
 
 
@@ -340,7 +359,7 @@ inline win::LOGFONT get_logfont(HFONT hf) {
 
 
 /// obtains the size of the virtaul screen
-inline Vector get_virtual_screen_size() {
+inline Vector get_window_size() {
   return {win::GetSystemMetrics(SM_CXVIRTUALSCREEN),
           win::GetSystemMetrics(SM_CYVIRTUALSCREEN)};
 }

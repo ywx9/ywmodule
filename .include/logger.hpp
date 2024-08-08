@@ -11,6 +11,8 @@ import std;
 #include "chrono.hpp"
 #include "source.hpp"
 
+#undef ERROR
+
 export namespace yw {
 
 

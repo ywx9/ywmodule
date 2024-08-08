@@ -130,6 +130,7 @@ import std;
 #include ".include/chrono.hpp"
 #include ".include/color.hpp"
 #include ".include/core.hpp"
+#include ".include/dwrite.hpp"
 #include ".include/file.hpp"
 #include ".include/input.hpp"
 #include ".include/list.hpp"
