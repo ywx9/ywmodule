@@ -2662,7 +2662,7 @@ template<typename Ct> constexpr fat8 _stof(StringView<Ct>& s) noexcept {
   bool neg = false, dot = false;
   while (1) {
     if (s.empty()) return {};
-    else if (is_digit(s.front())) { neg = true; v = s.front() - '0'; break;}
+    else if (is_digit(s.front())) { v = s.front() - '0'; break;}
     else if (s.front() == Ct('-')) { neg = true; break; }
     else if (s.front() == Ct('.')) { dot = true; break; }
     else s.remove_prefix(1);
@@ -2707,11 +2707,15 @@ template<typename Ct> constexpr fat8 _stof(StringView<Ct>& s) noexcept {
 /// \return converted value
 /// \note if `s` is the lvalue reference to a `StringView`, it represents the rest part not used to convert
 template<arithmetic T> inline constexpr auto stov = []<stringable St>(St&& s) noexcept -> T {
+  std::cout << typeid(St).name() << std::endl;
+  std::cout << typeid(StringView<iter_value<decltype(s)>>&).name() << std::endl;
   if constexpr (same_as<St, StringView<iter_value<decltype(s)>>&>) {
+    std::cout << "A" << std::endl;
     if constexpr (floating_point<T>) return T(_::_stof(s));
     else if constexpr (std::signed_integral<T>) return T(_::_stoi(s));
     else if constexpr (std::unsigned_integral<T>) return T(_::_ston(s));
   } else {
+    std::cout << "B" << std::endl;
     StringView<iter_value<remove_ref<decltype(s)>>> t(s);
     if constexpr (floating_point<T>) return T(_::_stof(t));
     else if constexpr (std::signed_integral<T>) return T(_::_stoi(t));

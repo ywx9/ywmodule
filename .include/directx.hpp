@@ -5,6 +5,8 @@
 
 #include "d3d12.h"
 #include "dxgi1_4.h"
+#pragma comment(lib, "d3d12.lib")
+#pragma comment(lib, "dxgi.lib")
 
 #include "comptr.hpp"
 #include "windows.hpp"
@@ -37,7 +39,7 @@ export namespace yw {
 /// dxgi factory
 inline ComPtr<win::IDXGIFactory4> DXGI_FACTORY = []{
   IDXGIFactory4* ptr = nullptr;
-  auto hr = win::CreateDXGIFactory1(&ptr);
+  auto hr = win::CreateDXGIFactory1(ptr);
   if (FAILED(hr)) {
     auto text = cvt<cat1>(hresult_message(hr));
     text = std::format("Failed to create DXGI factory: {}", text);

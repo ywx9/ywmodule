@@ -10,8 +10,7 @@ export namespace yw {
 
 /// class to represent a status
 /// \tparam T type of the status
-/// \tparam Processor callable object; `Processor(T)` is called when the status is changed
-template<typename T, auto Processor = none> class Status {
+template<typename T> class Status {
 protected:
   T _value{};
   mutable bool _changed{};
@@ -32,24 +31,26 @@ public:
   /// checks if the Status is changed after the last call of `value()`
   bool changed() const noexcept { return _changed; }
 
+  /// conversion operator to check if the status is changed
+  explicit operator bool() const noexcept { return changed(); }
+
   /// function calll operator which returns the current value of the status
   const T& operator()() const noexcept { return value(); }
 
   /// assignment operator which changes the value of the status
   Status& operator=(const T& Value) noexcept {
-    return _changed = true, _value = Value, Processor(_value), *this;
+    return _changed = true, _value = Value, *this;
   }
 
   /// assignment operator which changes the value of the status
   Status& operator=(T&& Value) noexcept {
-    return _changed = true, _value = mv(Value), Processor(_value), *this;
+    return _changed = true, _value = mv(Value), *this;
   }
 };
 
 
 /// class to represent a boolean status
-/// \tparam Processor callable object type which is called when the status is changed
-template<auto Processor> class Status<bool, Processor> {
+template<> class Status<bool> {
 protected:
   bool _value{};
   mutable bool _changed{};
@@ -67,13 +68,12 @@ public:
   /// checks if the Status is changed after the last call of `value()`
   bool changed() const noexcept { return _changed; }
 
+  /// conversion operator to check if the status is changed
+  explicit operator bool() const noexcept { return changed(); }
+
   /// function calll operator which returns the current value of the status
   bool operator()() const noexcept { return value(); }
 
-  /// assignment operator which changes the value of the status
-  Status& operator=(bool Value) noexcept {
-    return _changed = true, _value = Value, Processor(_value), *this;
-  }
 };
 
 } // namespace yw

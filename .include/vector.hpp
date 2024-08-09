@@ -1,11 +1,200 @@
 /// \file vector.hpp
-/// \brief defines `yw::Vector`
+/// \brief defines `Vector` and `Vector2`
 
 #pragma once
 
 #include "xvector.hpp"
 
 export namespace yw {
+
+
+/// struct to represent a 2D vector
+struct Vector2 {
+
+  /// x-coordinate
+  fat4 x{};
+
+  /// y-coordinate
+  fat4 y{};
+
+  /// number of elements
+  static constexpr nat count = 2;
+
+  /// default constructor
+  constexpr Vector2() noexcept = default;
+
+  /// constructor with the same value
+  explicit constexpr Vector2(const fat4 Fill)
+    noexcept : x(Fill), y(Fill) {}
+
+  /// constructor with the same value
+  explicit constexpr Vector2(numeric auto&& Fill)
+    noexcept : Vector2(fat4(Fill)) {}
+
+  /// constructor with the x and y coordinates
+  constexpr Vector2(numeric auto&& X, numeric auto&& Y)
+    noexcept : x(fat4(X)), y(fat4(Y)) {}
+
+  /// number of elements
+  constexpr nat size() const noexcept { return count; }
+
+  /// pointer to the data
+  fat4* data() noexcept { return &x; }
+
+  /// pointer to the data (const)
+  const fat4* data() const noexcept { return &x; }
+
+  /// reference to the element
+  fat4& operator[](nat i) noexcept { return data()[i]; }
+
+  /// reference to the element (const)
+  fat4 operator[](nat i) const noexcept { return data()[i]; }
+
+  /// iterator to the first element
+  fat4* begin() noexcept { return data(); }
+
+  /// iterator to the first element (const)
+  const fat4* begin() const noexcept { return data(); }
+
+  /// iterator to the last element
+  fat4* end() noexcept { return data() + count; }
+
+  /// iterator to the last element (const)
+  const fat4* end() const noexcept { return data() + count; }
+
+  /// returns the element at the specified index
+  template<nat I> requires (I < count)
+  constexpr fat4& get() & noexcept {
+    return select_parameter<I>(x, y);
+  }
+
+  /// returns the element at the specified index (const)
+  template<nat I> requires (I < count)
+  constexpr const fat4& get() const & noexcept {
+    return select_parameter<I>(x, y);
+  }
+
+  /// returns the element at the specified index (rvalue)
+  template<nat I> requires (I < count)
+  constexpr fat4&& get() && noexcept {
+    return std::move(select_parameter<I>(x, y));
+  }
+
+  /// returns the element at the specified index (const rvalue)
+  template<nat I> requires (I < count)
+  constexpr const fat4&& get() const && noexcept {
+    return std::move(select_parameter<I>(x, y));
+  }
+
+  /// equality operator
+  friend constexpr bool operator==(const Vector2& a, const Vector2& b)
+    noexcept { return a.x == b.x && a.y == b.y; }
+
+  /// comparison operator
+  friend constexpr auto operator<=>(
+    const Vector2& a, const Vector2& b) noexcept {
+    if (auto c = a.x <=> b.x; c != 0) return c;
+    else return a.y <=> b.y;
+  }
+
+  /// unary plus operator
+  friend constexpr Vector2 operator+(const Vector2& a) noexcept { return a; }
+
+  /// unary minus operator
+  friend constexpr Vector2 operator-(const Vector2& a)
+    noexcept { return {-a.x, -a.y}; }
+
+  /// addition operator
+  friend constexpr Vector2 operator+(const Vector2& a, const Vector2& b)
+    noexcept { return {a.x + b.x, a.y + b.y}; }
+
+  /// subtraction operator
+  friend constexpr Vector2 operator-(const Vector2& a, const Vector2& b)
+    noexcept { return {a.x - b.x, a.y - b.y}; }
+
+  /// multiplication operator
+  friend constexpr Vector2 operator*(const Vector2& a, const Vector2& b)
+    noexcept { return {a.x * b.x, a.y * b.y}; }
+
+  /// division operator
+  friend constexpr Vector2 operator/(const Vector2& a, const Vector2& b)
+    noexcept { return {a.x / b.x, a.y / b.y}; }
+
+  /// addition assignment operator
+  constexpr Vector2& operator+=(const Vector2& b) noexcept {
+    x += b.x;
+    y += b.y;
+    return *this;
+  }
+
+  /// subtraction assignment operator
+  constexpr Vector2& operator-=(const Vector2& b) noexcept {
+    x -= b.x;
+    y -= b.y;
+    return *this;
+  }
+
+  /// multiplication assignment operator
+  constexpr Vector2& operator*=(const Vector2& b) noexcept {
+    x *= b.x;
+    y *= b.y;
+    return *this;
+  }
+
+  /// division assignment operator
+  constexpr Vector2& operator/=(const Vector2& b) noexcept {
+    x /= b.x;
+    y /= b.y;
+    return *this;
+  }
+
+  /// multiplication operator
+  friend constexpr Vector2 operator*(
+    const Vector2& a, numeric auto&& b) noexcept {
+    auto f = fat4(b);
+    return {a.x * f, a.y * f};
+  }
+
+  /// division operator
+  friend constexpr Vector2 operator/(const Vector2& a, numeric auto&& b)
+    noexcept {
+    auto f = fat4(b);
+    return {a.x / f, a.y / f};
+  }
+
+  /// multiplication assignment operator
+  constexpr Vector2& operator*=(numeric auto&& b) noexcept {
+    auto f = fat4(b);
+    x *= f;
+    y *= f;
+    return *this;
+  }
+
+  /// division assignment operator
+  constexpr Vector2& operator/=(numeric auto&& b) noexcept {
+    auto f = fat4(b);
+    x /= f;
+    y /= f;
+    return *this;
+  }
+
+  /// calculates the power of the vector
+  constexpr fat4 power() const noexcept {
+    return x * x + y * y;
+  }
+
+  /// calculates the length of the vector
+  fat4 length() const noexcept {
+    return std::sqrt(power());
+  }
+
+  /// normalizes the vector
+  Vector2 normalize() const noexcept {
+    return *this / length();
+  }
+
+}; ///////////////////////////////////////////////////////////////////////////// Vector2
+
 
 /// \brief 4D vector
 struct Vector {
@@ -187,8 +376,13 @@ struct Vector {
 
 namespace std {
 
-template<> struct tuple_size<yw::Vector> : integral_constant<size_t, yw::Vector::count> {};
+template<> struct tuple_size<yw::Vector2>
+  : integral_constant<size_t, yw::Vector2::count> {};
+template<> struct tuple_size<yw::Vector>
+  : integral_constant<size_t, yw::Vector::count> {};
 
+template<size_t I> requires (I < yw::Vector2::count)
+struct tuple_element<I, yw::Vector2> : type_identity<float> {};
 template<size_t I> requires (I < yw::Vector::count)
 struct tuple_element<I, yw::Vector> : type_identity<float> {};
 

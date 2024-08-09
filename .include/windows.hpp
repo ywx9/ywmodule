@@ -59,6 +59,14 @@ inline int4 AdjustWindowRect(RECT* Rect, nat4 Style, int4 Menu, nat4 ExStyle) {
   return ::AdjustWindowRectEx(Rect, Style, Menu, ExStyle);
 }
 
+inline int4 ClientToScreen(HWND Window, POINT* Point) {
+  return ::ClientToScreen(Window, Point);
+}
+
+inline int4 ClipCursor(const RECT* Rect = nullptr) {
+  return ::ClipCursor(Rect);
+}
+
 inline cat2** CommandLineToArgv(const cat2* CommandLine, int* argc) {
   return ::CommandLineToArgvW(CommandLine, argc);
 }
@@ -80,11 +88,9 @@ inline int4 DestroyWindow(HWND Window) {
   return ::DestroyWindow(Window);
 }
 
-inline int8 DispatchMessage(const MSG& Message) {
-  return ::DispatchMessageW(&Message);
+inline int8 DispatchMessage(const MSG* Message) {
+  return ::DispatchMessageW(Message);
 }
-
-inline void DispatchMessage(MSG&& Message) = delete;
 
 inline nat4 FormatMessage(
   nat4 Flags, const void* Source, nat4 MessageId, nat4 LanguageId,
@@ -108,8 +114,8 @@ inline nat4 GetLastError() {
   return ::GetLastError();
 }
 
-inline int4 GetMessage(MSG& Message, HWND Window, nat4 Min, nat4 Max) {
-  return ::GetMessageW(&Message, Window, Min, Max);
+inline int4 GetMessage(MSG* Message, HWND Window, nat4 Min, nat4 Max) {
+  return ::GetMessageW(Message, Window, Min, Max);
 }
 
 inline HINSTANCE GetModuleHandle(const cat2* ModuleName) {
@@ -144,8 +150,8 @@ inline HCURSOR LoadCursor(HINSTANCE Instance, const cat2* CursorName) {
   return ::LoadCursorW(Instance, CursorName);
 }
 
-inline int4 PeekMessage(MSG& Message, HWND Window, nat4 Min, nat4 Max, nat4 Remove) {
-  return ::PeekMessageW(&Message, Window, Min, Max, Remove);
+inline int4 PeekMessage(MSG* Message, HWND Window, nat4 Min, nat4 Max, nat4 Remove) {
+  return ::PeekMessageW(Message, Window, Min, Max, Remove);
 }
 
 inline int4 MessageBox(HWND Window, const cat2* Text, const cat2* Caption, nat4 Type) {
@@ -168,11 +174,9 @@ inline int4 QueryPerformanceFrequency(LARGE_INTEGER* Frequency) {
   return ::QueryPerformanceFrequency(Frequency);
 }
 
-inline int2 RegisterClass(const WNDCLASS& WndClass) {
-  return ::RegisterClassExW(&WndClass);
+inline nat2 RegisterClass(const WNDCLASS* WndClass) {
+  return ::RegisterClassExW(WndClass);
 }
-
-inline void RegisterClass(WNDCLASS&& WndClass) = delete;
 
 inline int4 ScreenToClient(HWND Window, POINT* Point) {
   return ::ScreenToClient(Window, Point);
@@ -180,6 +184,10 @@ inline int4 ScreenToClient(HWND Window, POINT* Point) {
 
 inline int8 SendMessage(HWND Window, nat4 Message, nat8 WParam, int8 LParam) {
   return ::SendMessageW(Window, Message, WParam, LParam);
+}
+
+inline int4 SetCursorPos(int4 X, int4 Y) {
+  return ::SetCursorPos(X, Y);
 }
 
 inline HWND SetFocus(HWND Window) {
@@ -194,11 +202,9 @@ inline int4 ShowWindow(HWND Window, int4 Command) {
   return ::ShowWindow(Window, Command);
 }
 
-inline int4 TranslateMessage(const MSG& Message) {
-  return ::TranslateMessage(&Message);
+inline int4 TranslateMessage(const MSG* Message) {
+  return ::TranslateMessage(Message);
 }
-
-inline void TranslateMessage(MSG&& Message) = delete;
 
 inline int4 UpdateWindow(HWND Window) {
   return ::UpdateWindow(Window);
@@ -211,13 +217,13 @@ export namespace yw {
 
 
 /// instance handle
-inline const win::HINSTANCE INSTANCE_HANDLE = [] {
-  if (auto hi = win::GetModuleHandle(nullptr); !hi) {
-    logger.fatal("Failed to initialize the instance handle");
-    std::cerr << "Failed to initialize the instance handle" << std::endl;
-    return win::HINSTANCE{};
-  } else return hi;
-}();
+// inline const win::HINSTANCE INSTANCE_HANDLE = [] {
+//   if (auto hi = win::GetModuleHandle(nullptr); !hi) {
+//     logger.fatal("Failed to initialize the instance handle");
+//     std::cerr << "Failed to initialize the instance handle" << std::endl;
+//     return win::HINSTANCE{};
+//   } else return hi;
+// }();
 
 
 /// default font handle
@@ -235,17 +241,6 @@ inline const fat4 DEFAULT_FONT_SIZE = [] {
   win::LOGFONT lf;
   win::GetObject(SYSTEM_FONT_HANDLE, sizeof(lf), &lf);
   return std::abs(lf.lfHeight) * cev(96.f / 72.f) + 2;
-}();
-
-
-/// command line arguments; argv[0] is the program name
-inline const Array<str1> argv = [] {
-  int argc;
-  auto a = win::CommandLineToArgv(win::GetCommandLine(), &argc);
-  Array<str1> r(argc);
-  for (; 0 <= --argc;) r[argc] = cvt<cat1>(a[argc]);
-  logger.file = Path(r[0]).replace_extension(".log");
-  return r;
 }();
 
 
